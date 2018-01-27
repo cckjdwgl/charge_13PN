@@ -3432,7 +3432,13 @@ err_t LCD_task(void)
 			sprintf((char*)LocalPoint, "%s:%d",device.Toolname,(LCDC.LcdNumber[i]));
 			tft_DisplayStr(320-16, 0, LocalPoint,BLACK, RED,LCDC.LcdNumber[i]);			
 			}
-		}				
+		}
+		
+		if(device.SD_state !=FR_OK)
+		{
+			sprintf((char*)LocalPoint, "SD card error:%d",device.SD_state);
+			tft_DisplayStr(0, 0, LocalPoint,BLACK, RED,3);						
+		}
 	}
 	else
 	{		
@@ -3490,7 +3496,7 @@ err_t LCD_task(void)
 				if(time_sys-LCDC.SPTime[i]>LCDC.SPTimeSet && (LCDC.LcdNumber[i]>0))
 				{			
 					LCDC.SPTime[i] = time_sys;
-					tft_Clear(0,0,320,240,RED,LCDC.LcdNumber[i]);			
+					tft_Clear(0,0,320,240,WHITE,LCDC.LcdNumber[i]);		
 
 					if(device.PortPowerUseTime[i])
 					{

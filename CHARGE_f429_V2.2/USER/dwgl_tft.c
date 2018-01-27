@@ -1323,8 +1323,11 @@ void tft_ShowHz(u16 x, u16 y, u8 *pcStr, u16 PenColor, u16 BackColor)
 	offset = temph*94*32+templ*32;
 	for(pos=0;pos<32;pos+=2)
 	{
+#if use_hzlib
 		temp=HzLib[offset+pos+1];		                     //调用1616字体
-			
+#else
+		temp=0;		                     //
+#endif		
 		for(t=0;t<8;t++)
 	  {                 
 	    if(temp&0x01)			                                   //从低位开始
@@ -1338,7 +1341,11 @@ void tft_ShowHz(u16 x, u16 y, u8 *pcStr, u16 PenColor, u16 BackColor)
 			temp>>=1; 
 	  }
 		
+#if use_hzlib
 		temp=HzLib[offset+pos];		                     //调用1608字体
+#else
+		temp=0;		                     //
+#endif		
 			
 		for(t=0;t<8;t++)
 	  {                 
@@ -1380,7 +1387,11 @@ void tft_ShowHzE(u16 x, u16 y, u8 *pcStr, u16 PenColor, u16 BackColor)
 	{
 		pos--; 
 		pos--; 
-		temp=HzLib[offset+pos];		                     //调用1616字体
+#if use_hzlib
+		temp=HzLib[offset+pos];		                     //调用1608字体
+#else
+		temp=0;		                     //
+#endif		
 			
 		for(t=0;t<8;t++)
 	  {                 
@@ -1395,7 +1406,11 @@ void tft_ShowHzE(u16 x, u16 y, u8 *pcStr, u16 PenColor, u16 BackColor)
 			temp<<=1; 
 	  }
 		
-		temp=HzLib[offset+pos+1];		                     //调用1608字体
+#if use_hzlib
+		temp=HzLib[offset+pos+1];		                     //调用1616字体
+#else
+		temp=0;		                     //
+#endif		
 			
 		for(t=0;t<8;t++)
 	  {                 
@@ -1637,6 +1652,9 @@ void tft_cs_enable(u8 cs)
 }
 void tft_cs_disable(u8 cs)
 {
+	unsigned char i;	
+	i = 100;
+	while(i--);
 	if((cs&0x01)==1)
 	{
  	GPIO_SetBits(LCD_CS1_PORT, LCD_CS1_PIN);

@@ -147,6 +147,7 @@ struct  Addr_info2STR {
 struct  device_table {
 	u8 head;
 	u8 SW_state;  		//状态开关
+	u8 SD_state;  		//SD状态
 	unsigned  int ChargeTimer;  		//
 	unsigned  int ChargeTimerSet;  	//最后一RX的时间
 	u8 Toolname[16];
@@ -287,16 +288,6 @@ extern 	u8 charge_speed[2];   //充电速度
 extern 	u8  SF_REG;
 extern 	u8  GAIN_REG;
 extern 	u8  KEEP_EN;
-
-
-/* 波形数据 ---------------------------------------------------------*/
-extern  uint16_t Sine12bit[32];
-/* 坐标数据 ---------------------------------------------------------*/
-extern  uint16_t co_x[10];
-/* 坐标数据 ---------------------------------------------------------*/
-extern  uint16_t co_y[10];
-/* 九宫数据 ---------------------------------------------------------*/
-extern  uint16_t xy_3[3][3];
 
 
 #define USB_POWER_ON		(0)

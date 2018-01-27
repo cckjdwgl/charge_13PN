@@ -13,6 +13,8 @@
 
 #ifndef __HzLib_65k_H__
 #define __HzLib_65k_H__
+//#define use_hzlib 1      //Ê¹ÓÃºº×Ö
+#define use_hzlib 0
 
 extern unsigned char const HzLib[];
 extern unsigned char const AsciiLib[];

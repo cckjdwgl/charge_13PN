@@ -178,22 +178,22 @@ void GPIO_EN_HV(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin,u8 ON_OFF)				//开快充
 {
 	if(ON_OFF == ON)
 	{
-		GPIO_SetBits(GPIOx, GPIO_Pin);
+		GPIO_ResetBits(GPIOx, GPIO_Pin);
 	}
 	else
 	{
-		GPIO_ResetBits(GPIOx, GPIO_Pin);
+		GPIO_SetBits(GPIOx, GPIO_Pin);
 	}
 }
-void GPIO_SW_883(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin,u8 ON_OFF)				//开快充
+void GPIO_SW_883(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin,u8 ON_OFF)				//开883 DP DM
 {
 	if(ON_OFF == ON)
 	{
-		GPIO_SetBits(GPIOx, GPIO_Pin);
+		GPIO_ResetBits(GPIOx, GPIO_Pin);
 	}
 	else
 	{
-		GPIO_ResetBits(GPIOx, GPIO_Pin);
+		GPIO_SetBits(GPIOx, GPIO_Pin);
 	}
 }
 //----------------------------------------------------------------------------

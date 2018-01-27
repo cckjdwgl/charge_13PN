@@ -30,6 +30,7 @@ int main(void)
 {	
 //	u32 temp;
 //	uint8_t flag=0;
+	u8 i=0;
 	unsigned char *LocalPoint;
 //	unsigned int LocalPointSize;
 	
@@ -59,25 +60,15 @@ int main(void)
 	//在外部SPI Flash挂载文件系统，文件系统挂载时会对SPI设备初始化
 	dwgl_FatInit();
 	
+	for(i=0;i<3;i++)
+	{
 	time_ms=time_sys;
 	LED_ON;
 	while(time_sys-time_ms<100);
 	time_ms=time_sys;
 	LED_OFF;
 	while(time_sys-time_ms<100);
-	time_ms=time_sys;
-	LED_ON;
-	while(time_sys-time_ms<100);
-	time_ms=time_sys;
-	LED_OFF;
-	while(time_sys-time_ms<100);
-	time_ms=time_sys;
-	LED_ON;
-	while(time_sys-time_ms<100);
-	time_ms=time_sys;
-	LED_OFF;
-	while(time_sys-time_ms<100);
-	time_ms=time_sys;
+	}
 
 	make_device_mess();
 	make_soket_mess();
@@ -115,18 +106,15 @@ int main(void)
   dns_demo_test();
 //	udp_demo_test();
 	
+	for(i=0;i<2;i++)
+	{
 	time_ms=time_sys;
 	LED_ON;
 	while(time_sys-time_ms<500);
 	time_ms=time_sys;
 	LED_OFF;
 	while(time_sys-time_ms<500);
-	time_ms=time_sys;
-	LED_ON;
-	while(time_sys-time_ms<500);
-	time_ms=time_sys;
-	LED_OFF;
-	while(time_sys-time_ms<500);
+	}
 	
 	time_ms=time_sys;	
 		
