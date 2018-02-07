@@ -45,18 +45,15 @@ int main(void)
 	Debug_USART_Config();
 	BSP_ADC_Init();
 	SPI_FLASH_Init();
-	
-	LCD_Init_BSP();
-	NVIC_Configuration();
 	/* 初始化系统滴答定时器 */	
 	SysTick_Init();
 	
 	TIM3_Config(999,899);//10ms定时器
 	printf("以太网通信实现例程\n");
-	
-	LCD_Init();
-	LCD_Init1();
-	
+	NVIC_Configuration();
+		
+	LCD_Init_BSP();	
+	LCD_InitAll();	
 	//在外部SPI Flash挂载文件系统，文件系统挂载时会对SPI设备初始化
 	dwgl_FatInit();
 	
@@ -115,7 +112,7 @@ int main(void)
 	LED_OFF;
 	while(time_sys-time_ms<500);
 	}
-	
+	get_AD_number((unsigned char*)"area4/area4_info.get");
 	time_ms=time_sys;	
 		
 	while(1)

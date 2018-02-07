@@ -103,7 +103,8 @@ struct http_url
 {
 	void *next;  //下一个
 	unsigned  char url[256];         //链接
-	unsigned  char DestPath[256];    //目的地址
+	unsigned  char SourcePath[128];    //源的地址
+	unsigned  char DestPath[128];    //目的地址
 	unsigned  char type[4];       	 //消息类型 有SSI初化始使用,URL资源连接用完就删除.
 	unsigned  int  PresentLength;    //当前消息体长度
 	unsigned  int  TotLength;        //总消息体长度

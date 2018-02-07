@@ -1323,11 +1323,7 @@ void tft_ShowHz(u16 x, u16 y, u8 *pcStr, u16 PenColor, u16 BackColor)
 	offset = temph*94*32+templ*32;
 	for(pos=0;pos<32;pos+=2)
 	{
-#if use_hzlib
 		temp=HzLib[offset+pos+1];		                     //调用1616字体
-#else
-		temp=0;		                     //
-#endif		
 		for(t=0;t<8;t++)
 	  {                 
 	    if(temp&0x01)			                                   //从低位开始
@@ -1341,12 +1337,7 @@ void tft_ShowHz(u16 x, u16 y, u8 *pcStr, u16 PenColor, u16 BackColor)
 			temp>>=1; 
 	  }
 		
-#if use_hzlib
-		temp=HzLib[offset+pos];		                     //调用1608字体
-#else
-		temp=0;		                     //
-#endif		
-			
+		temp=HzLib[offset+pos];		                     //调用1608字体			
 		for(t=0;t<8;t++)
 	  {                 
 	    if(temp&0x01)			                                   //从低位开始
@@ -1387,11 +1378,7 @@ void tft_ShowHzE(u16 x, u16 y, u8 *pcStr, u16 PenColor, u16 BackColor)
 	{
 		pos--; 
 		pos--; 
-#if use_hzlib
 		temp=HzLib[offset+pos];		                     //调用1608字体
-#else
-		temp=0;		                     //
-#endif		
 			
 		for(t=0;t<8;t++)
 	  {                 
@@ -1406,12 +1393,7 @@ void tft_ShowHzE(u16 x, u16 y, u8 *pcStr, u16 PenColor, u16 BackColor)
 			temp<<=1; 
 	  }
 		
-#if use_hzlib
 		temp=HzLib[offset+pos+1];		                     //调用1616字体
-#else
-		temp=0;		                     //
-#endif		
-			
 		for(t=0;t<8;t++)
 	  {                 
 	    if(temp&0x80)			                                   //从低位开始
@@ -1518,8 +1500,10 @@ void tft_DisplayStr(unsigned int x, unsigned int y, unsigned char *s,u16 PenColo
 			}
 			if((*s>=0XB0)&&(*s<=0XF7)&&(*(s+1)>=0XA1)&&(*(s+1)<=0XFE))  //GB2312汉字区。即 GBK/2:B0A1-F7FE。收录 GB 2312 汉字 6763 个，按原顺序排列。
 			{
+#if use_hzlib
 //			tft_ShowHz(x, y, s, PenColor, BackColor);
 			tft_ShowHzE(x, y-16, s, PenColor, BackColor);
+#endif
 				s += 2;
 			}
 			else
@@ -1554,13 +1538,13 @@ void tft_DisplayStr_debug(unsigned int x, unsigned int y, struct debug_str *str,
 	s= str->str_data; 
 	len =str->str_operation_point;
 	
-	if(LCDC.Mode ==1)
+	if(LCDC.Mode[0] ==LCD_MODE_TEST&&LCDC.Mode[1] ==LCD_MODE_TEST)
 	{
 		tft_cs_enable(cs);
 		LCD_Fill(x, y, x+16-1, y+240-1,BackColor);
 		while (s[len]) 
 		{
-			if(s[len]>0x80)                                            //显示汉字
+			if(s[len]>0x80)                                       //显示汉字
 			{
 				if(y+16<240)
 				{
@@ -1578,8 +1562,10 @@ void tft_DisplayStr_debug(unsigned int x, unsigned int y, struct debug_str *str,
 				}
 				if((s[len]>=0XB0)&&(s[len]<=0XF7)&&(s[len+1]>=0XA1)&&(s[len+1]<=0XFE))  //GB2312汉字区。即 GBK/2:B0A1-F7FE。收录 GB 2312 汉字 6763 个，按原顺序排列。
 				{
+#if use_hzlib
 	//			tft_ShowHz(x, y, s, PenColor, BackColor);
 				tft_ShowHzE(x, y-16, &s[len], PenColor, BackColor);
+#endif
 					len += 2;
 				}
 				else

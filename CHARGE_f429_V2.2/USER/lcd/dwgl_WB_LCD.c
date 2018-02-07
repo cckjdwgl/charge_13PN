@@ -22,10 +22,11 @@
 ** output parameters:   Œﬁ
 ** Returned value:      Œﬁ
 *********************************************************/
-void Delay_ms (u32 nCount)
+void Delay_1ms (u32 nCount)
 {
-	volatile int i;	 	
-	for (i=0;i<nCount*800;i++);
+		u32 TempTimeSys;	
+	TempTimeSys = time_sys;
+	while(time_sys-TempTimeSys<nCount);
 }
 
 /*********************************************************************************
@@ -217,7 +218,7 @@ void LCD_Init_BSP(void)
 	
   FMC_NORSRAMCmd(FMC_Bank1_NORSRAM1, ENABLE);  //  πƒ‹BANK1 
 		
-	Delay_ms(50);// delay 50 ms 
+	Delay_1ms(50);// delay 50 ms 
 }
 
 /**********************************************************************************
@@ -382,153 +383,145 @@ void FSMC_LCDInit(void)
 
 void LCD_Init(void)
 {
-//	LCD_IOConfig();
-//  FSMC_LCDInit();
-// 	GPIO_ResetBits(LCD_RST_PORT, LCD_RST_PIN);
-//		Delay_10ms(500);
-  GPIO_SetBits(LCD_RST_PORT, LCD_RST_PIN);
-	
- 	GPIO_ResetBits(LCD_CS1_PORT, LCD_CS1_PIN);
-// 	  GPIO_ResetBits(LCD_CS2_PORT, LCD_CS2_PIN);
-//  	GPIO_SetBits(LCD_RS_PORT, LCD_RS_PIN);  //–¥ ˝æ› 
-//  	GPIO_SetBits(LCD_RD_PORT, LCD_RD_PIN);  //–¥ ˝æ› 
-//  	GPIO_SetBits(LCD_WR_PORT, LCD_WR_PIN);  //–¥ ˝æ› 
-	Delay_ms(50);
+	Delay_10ms(1);
 
   LCD_WR_REG(0x00E2);	
-	Delay_ms(1);
+	
+	Delay_1ms(1);
 	LCD_WE_RAM(0x0023);
 //	LCD_WE_RAM(0x001D);
 	// Set PLL with OSC = 10MHz (hardware)
   // Multiplier N = 35, VCO (>250MHz)= OSC*(N+1), VCO = 360MHz	   
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(0x0002);
 	// Divider M = 2, PLL = 360/(M+1) = 120MHz
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(0x0004);
 //	LCD_WE_RAM(0x0054);
 	// Validate M and N values
-	Delay_ms(500);
+	Delay_1ms(1);
 
 	LCD_WR_REG(0x00E0);                             // PLL enable
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(0x0001);
-	Delay_ms(500);
+	Delay_1ms(1);
 	
 	LCD_WR_REG(0x00E0);
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(0x0003);
-	Delay_ms(5);
+	Delay_1ms(1);
 	
 	LCD_WR_REG(0x0001);                             // software reset
-	Delay_ms(5);
+	Delay_1ms(1);
 	LCD_WR_REG(0x00E6);//…Ë÷√œÒÀÿ ±÷”,33Mhz
 //	LCD_WE_RAM(0x0004);
-	Delay_ms(1);
-	LCD_WE_RAM(0x0002);//DWGL
-	Delay_ms(1);
-	LCD_WE_RAM(0x0093);
-	Delay_ms(1);
-	LCD_WE_RAM(0x00e0);
+	Delay_1ms(1);
+//	LCD_WE_RAM(0x0002);//DWGL1
+	LCD_WE_RAM(0x0000);//DWGL2
+	Delay_1ms(1);
+//	LCD_WE_RAM(0x0093);  //DWGL1
+	LCD_WE_RAM(0x00DB);  //DWGL2
+	Delay_1ms(1);
+	LCD_WE_RAM(0x0000);
 
 	LCD_WR_REG(0x00B0);	                             //LCD SPECIFICATION
 //	LCD_WE_RAM(0x0000);//TFT panel data width  =0, 18-bit =1,24-bit 
 //	LCD_WE_RAM(0x0000);
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(0x0020);//TFT panel data width  =0, 18-bit =1,24-bit 
 //	LCD_WE_RAM(0x0060);
 //	LCD_WE_RAM(0x0040);
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(0x0000);
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM((HDP>>8)&0x00FF);                    //Set HDP
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(HDP&0X00FF);
-	Delay_ms(1);
+	Delay_1ms(1);
   LCD_WE_RAM((VDP>>8)&0x00FF);                    //Set VDP
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(VDP&0X00FF);
-	Delay_ms(1);
+	Delay_1ms(1);
   LCD_WE_RAM(0x0000);
 
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WR_REG(0x00B4);	                             //HSYNC
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM((HT>>8)&0x00FF);                     //Set HT
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(HT&0x00FF);
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM((HPS>>8)&0x00FF);                     //Set HPS
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(HPS&0x00FF);
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(HPW);			                            //Set HPW
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM((LPS>>8)&0x00FF);                      //Set HPS
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(LPS&0x00FF);	
 //	LCD_WE_RAM(0);                      //Set HPS
 //	LCD_WE_RAM(0);
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(0x0000);
 
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WR_REG(0x00B6);	                              //VSYNC
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM((VT>>8)&0x00FF);                       //Set VT
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(VT&0x00FF);
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM((VPS>>8)&0x00FF);                       //Set VPS
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(VPS&0x00FF);
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(VPW);			                            //Set VPW
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM((FPS>>8)&0x00FF);                      //Set FPS
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(FPS&0X00FF);
 //	LCD_WE_RAM(0);                      //Set FPS
 //	LCD_WE_RAM(0);
 
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WR_REG(0x002A);	                             //
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(0x0000);//
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(0x0000);//
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM((HDP>>8)&0x00FF);                    //Set HDP
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(HDP&0X00FF);
 	
 	
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WR_REG(0x002B);	                             //
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(0x0000);//
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(0x0000);//
-	Delay_ms(1);
+	Delay_1ms(1);
   LCD_WE_RAM((VDP>>8)&0x00FF);                    //Set VDP
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(VDP&0X00FF);
 
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WR_REG(0x00BA);
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(0x0005);                               //GPIO[3:0] out 1
 
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WR_REG(0x00B8);
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(0x0007);                               //GPIO3=input, GPIO[2:0]=output
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(0x0001);                               //GPIO0 normal
 
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WR_REG(0x0036);                                //rotation
-	Delay_ms(1);
+	Delay_1ms(1);
 	if(SET_XY1==1)
 	{
 LCD_WE_RAM(0x0040);//dwgl				//∫·∆¡1
@@ -563,266 +556,81 @@ LCD_WE_RAM(0x0040);//dwgl				//∫·∆¡1
 //	 LCD_WE_RAM(0x00AB);//AC       // ˙∆¡1
 //	 LCD_WE_RAM(0x00AC);//AC       // ˙∆¡2
 			
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WR_REG(0x00F0);                               //pixel data interface
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(0x0003);
 
 
-	Delay_ms(5);
+	Delay_1ms(1);
 	LCD_WR_REG(0x0029);                                //display on
 
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WR_REG(0x00BE);                                //set PWM for B/L
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(0x0006);
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(0x0080);
 	
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(0x0001);
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(0x00f0);
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(0x0000);
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(0x0000);
 
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WR_REG(0x00d0);                               //…Ë÷√∂ØÃ¨±≥π‚øÿ÷∆≈‰÷√ 
-	Delay_ms(1);
+	Delay_1ms(1);
 	LCD_WE_RAM(0x000d);
 
 
-	Delay_ms(5);	                                   //—” ±50ms
-	LCD_Clear(RED);
-
-	Delay_ms(1);
-	GPIO_SetBits(LCD_CS1_PORT, LCD_CS1_PIN);
-//	GPIO_SetBits(LCD_CS2_PORT, LCD_CS2_PIN);
-	
+	Delay_1ms(1);	                                   //—” ±
 }
 void LCD_Init1(void)
 {
-//	LCD_IOConfig();
-//  FSMC_LCDInit();
-// 	GPIO_ResetBits(LCD_RST_PORT, LCD_RST_PIN);
-//		Delay_10ms(500);
   GPIO_SetBits(LCD_RST_PORT, LCD_RST_PIN);
 	
 // 	GPIO_ResetBits(LCD_CS1_PORT, LCD_CS1_PIN);
  	GPIO_ResetBits(LCD_CS2_PORT, LCD_CS2_PIN);
-//  	GPIO_SetBits(LCD_RS_PORT, LCD_RS_PIN);  //–¥ ˝æ› 
-//  	GPIO_SetBits(LCD_RD_PORT, LCD_RD_PIN);  //–¥ ˝æ› 
-//  	GPIO_SetBits(LCD_WR_PORT, LCD_WR_PIN);  //–¥ ˝æ› 
-	Delay_ms(50);
-
-  LCD_WR_REG(0x00E2);	
-	Delay_ms(1);
-	LCD_WE_RAM(0x0023);
-//	LCD_WE_RAM(0x001D);
-	// Set PLL with OSC = 10MHz (hardware)
-  // Multiplier N = 35, VCO (>250MHz)= OSC*(N+1), VCO = 360MHz	   
-	Delay_ms(1);
-	LCD_WE_RAM(0x0002);
-	// Divider M = 2, PLL = 360/(M+1) = 120MHz
-	Delay_ms(1);
-	LCD_WE_RAM(0x0004);
-//	LCD_WE_RAM(0x0054);
-	// Validate M and N values
-	Delay_ms(500);
-
-	LCD_WR_REG(0x00E0);                             // PLL enable
-	Delay_ms(1);
-	LCD_WE_RAM(0x0001);
-	Delay_ms(500);
-	
-	LCD_WR_REG(0x00E0);
-	Delay_ms(1);
-	LCD_WE_RAM(0x0003);
-	Delay_ms(5);
-	
-	LCD_WR_REG(0x0001);                             // software reset
-	Delay_ms(5);
-	LCD_WR_REG(0x00E6);//…Ë÷√œÒÀÿ ±÷”,33Mhz
-//	LCD_WE_RAM(0x0004);
-	Delay_ms(1);
-	LCD_WE_RAM(0x0002);//DWGL
-	Delay_ms(1);
-	LCD_WE_RAM(0x0093);
-	Delay_ms(1);
-	LCD_WE_RAM(0x00e0);
-
-	LCD_WR_REG(0x00B0);	                             //LCD SPECIFICATION
-//	LCD_WE_RAM(0x0000);//TFT panel data width  =0, 18-bit =1,24-bit 
-//	LCD_WE_RAM(0x0000);
-	Delay_ms(1);
-	LCD_WE_RAM(0x0020);//TFT panel data width  =0, 18-bit =1,24-bit 
-//	LCD_WE_RAM(0x0060);
-//	LCD_WE_RAM(0x0040);
-	Delay_ms(1);
-	LCD_WE_RAM(0x0000);
-	Delay_ms(1);
-	LCD_WE_RAM((HDP>>8)&0x00FF);                    //Set HDP
-	Delay_ms(1);
-	LCD_WE_RAM(HDP&0X00FF);
-	Delay_ms(1);
-  LCD_WE_RAM((VDP>>8)&0x00FF);                    //Set VDP
-	Delay_ms(1);
-	LCD_WE_RAM(VDP&0X00FF);
-	Delay_ms(1);
-  LCD_WE_RAM(0x0000);
-
-	Delay_ms(1);
-	LCD_WR_REG(0x00B4);	                             //HSYNC
-	Delay_ms(1);
-	LCD_WE_RAM((HT>>8)&0x00FF);                     //Set HT
-	Delay_ms(1);
-	LCD_WE_RAM(HT&0x00FF);
-	Delay_ms(1);
-	LCD_WE_RAM((HPS>>8)&0x00FF);                     //Set HPS
-	Delay_ms(1);
-	LCD_WE_RAM(HPS&0x00FF);
-	Delay_ms(1);
-	LCD_WE_RAM(HPW);			                            //Set HPW
-	Delay_ms(1);
-	LCD_WE_RAM((LPS>>8)&0x00FF);                      //Set HPS
-	Delay_ms(1);
-	LCD_WE_RAM(LPS&0x00FF);	
-//	LCD_WE_RAM(0);                      //Set HPS
-//	LCD_WE_RAM(0);
-	Delay_ms(1);
-	LCD_WE_RAM(0x0000);
-
-	Delay_ms(1);
-	LCD_WR_REG(0x00B6);	                              //VSYNC
-	Delay_ms(1);
-	LCD_WE_RAM((VT>>8)&0x00FF);                       //Set VT
-	Delay_ms(1);
-	LCD_WE_RAM(VT&0x00FF);
-	Delay_ms(1);
-	LCD_WE_RAM((VPS>>8)&0x00FF);                       //Set VPS
-	Delay_ms(1);
-	LCD_WE_RAM(VPS&0x00FF);
-	Delay_ms(1);
-	LCD_WE_RAM(VPW);			                            //Set VPW
-	Delay_ms(1);
-	LCD_WE_RAM((FPS>>8)&0x00FF);                      //Set FPS
-	Delay_ms(1);
-	LCD_WE_RAM(FPS&0X00FF);
-//	LCD_WE_RAM(0);                      //Set FPS
-//	LCD_WE_RAM(0);
-
-	Delay_ms(1);
-	LCD_WR_REG(0x002A);	                             //
-	Delay_ms(1);
-	LCD_WE_RAM(0x0000);//
-	Delay_ms(1);
-	LCD_WE_RAM(0x0000);//
-	Delay_ms(1);
-	LCD_WE_RAM((HDP>>8)&0x00FF);                    //Set HDP
-	Delay_ms(1);
-	LCD_WE_RAM(HDP&0X00FF);
-	
-	
-	Delay_ms(1);
-	LCD_WR_REG(0x002B);	                             //
-	Delay_ms(1);
-	LCD_WE_RAM(0x0000);//
-	Delay_ms(1);
-	LCD_WE_RAM(0x0000);//
-	Delay_ms(1);
-  LCD_WE_RAM((VDP>>8)&0x00FF);                    //Set VDP
-	Delay_ms(1);
-	LCD_WE_RAM(VDP&0X00FF);
-
-	Delay_ms(1);
-	LCD_WR_REG(0x00BA);
-	Delay_ms(1);
-	LCD_WE_RAM(0x0005);                               //GPIO[3:0] out 1
-
-	Delay_ms(1);
-	LCD_WR_REG(0x00B8);
-	Delay_ms(1);
-	LCD_WE_RAM(0x0007);                               //GPIO3=input, GPIO[2:0]=output
-	Delay_ms(1);
-	LCD_WE_RAM(0x0001);                               //GPIO0 normal
-
-	Delay_ms(1);
-	LCD_WR_REG(0x0036);                                //rotation
-	Delay_ms(1);
-	if(SET_XY1==1)
-	{
-LCD_WE_RAM(0x0040);//dwgl				//∫·∆¡1
-//LCD_WE_RAM(0x0004);//dwgl				//∫·∆¡1
-//LCD_WE_RAM(0x0006);//dwgl				//∫·∆¡1
-//LCD_WE_RAM(0x0002);//dwgl				//∫·∆¡1
-//LCD_WE_RAM(0x0042);//dwgl				//∫·∆¡1
-	}
-	else
-	if(SET_XY1==2)
-	{
-//	LCD_WE_RAM(0x0086);								//∫·∆¡2
-	LCD_WE_RAM(0x0080);								//∫·∆¡2
-	}
-	else
-	if(SET_XY1==3)
-	{
-	 LCD_WE_RAM(0x0023);//AC       // ˙∆¡1
-//	 LCD_WE_RAM(0x0020);//AC       // ˙∆¡1
-//	 LCD_WE_RAM(0x0024);//AC       // ˙∆¡1
-//	 LCD_WE_RAM(0x0030);//AC       // ˙∆¡1
-	}
-	else
-	if(SET_XY1==4)
-	{
-//	 LCD_WE_RAM(0x00AC);//AC       // ˙∆¡2
-//	 LCD_WE_RAM(0x00a0);//AC       // ˙∆¡2
-	 LCD_WE_RAM(0x0030);//AC       // ˙∆¡2
-	}
-//LCD_WE_RAM(0x0000);//dwgl				//∫·∆¡1
-//	LCD_WE_RAM(0x0086);						//∫·∆¡2
-//	 LCD_WE_RAM(0x00AB);//AC       // ˙∆¡1
-//	 LCD_WE_RAM(0x00AC);//AC       // ˙∆¡2
-			
-	Delay_ms(1);
-	LCD_WR_REG(0x00F0);                               //pixel data interface
-	Delay_ms(1);
-	LCD_WE_RAM(0x0003);
-
-
-	Delay_ms(5);
-	LCD_WR_REG(0x0029);                                //display on
-
-	Delay_ms(1);
-	LCD_WR_REG(0x00BE);                                //set PWM for B/L
-	Delay_ms(1);
-	LCD_WE_RAM(0x0006);
-	Delay_ms(1);
-	LCD_WE_RAM(0x0080);
-	
-	Delay_ms(1);
-	LCD_WE_RAM(0x0001);
-	Delay_ms(1);
-	LCD_WE_RAM(0x00f0);
-	Delay_ms(1);
-	LCD_WE_RAM(0x0000);
-	Delay_ms(1);
-	LCD_WE_RAM(0x0000);
-
-	Delay_ms(1);
-	LCD_WR_REG(0x00d0);                               //…Ë÷√∂ØÃ¨±≥π‚øÿ÷∆≈‰÷√ 
-	Delay_ms(1);
-	LCD_WE_RAM(0x000d);
-
-
-	Delay_ms(5);	                                   //—” ±50ms
-	LCD_Clear(RED);
-	
-	Delay_ms(1);
+	LCD_Init();
 //	GPIO_SetBits(LCD_CS1_PORT, LCD_CS1_PIN);
 	GPIO_SetBits(LCD_CS2_PORT, LCD_CS2_PIN);
 	
+}
+
+void LCD_Init2(void)
+{
+  GPIO_SetBits(LCD_RST_PORT, LCD_RST_PIN);
+	
+// 	GPIO_ResetBits(LCD_CS1_PORT, LCD_CS1_PIN);
+ 	GPIO_ResetBits(LCD_CS2_PORT, LCD_CS2_PIN);
+	LCD_Init();
+//	GPIO_SetBits(LCD_CS1_PORT, LCD_CS1_PIN);
+	GPIO_SetBits(LCD_CS2_PORT, LCD_CS2_PIN);
+	
+}
+void LCD_InitAll(void)
+{
+ 	GPIO_ResetBits(LCD_CS1_PORT, LCD_CS1_PIN);
+ 	GPIO_ResetBits(LCD_CS2_PORT, LCD_CS2_PIN);	
+ 	GPIO_ResetBits(LCD_RST_PORT, LCD_RST_PIN);
+	Delay_1ms(200);	                                   //—” ±200ms	
+ 	GPIO_SetBits(LCD_RST_PORT, LCD_RST_PIN);
+	
+	GPIO_SetBits(LCD_CS1_PORT, LCD_CS1_PIN);
+	GPIO_SetBits(LCD_CS2_PORT, LCD_CS2_PIN);
+	
+ 	GPIO_ResetBits(LCD_CS1_PORT, LCD_CS1_PIN);
+ 	GPIO_ResetBits(LCD_CS2_PORT, LCD_CS2_PIN);	
+//  	GPIO_SetBits(LCD_RS_PORT, LCD_RS_PIN);  //–¥ ˝æ› 
+//  	GPIO_SetBits(LCD_RD_PORT, LCD_RD_PIN);  //–¥ ˝æ› 
+//  	GPIO_SetBits(LCD_WR_PORT, LCD_WR_PIN);  //–¥ ˝æ› 
+	LCD_Init();
+	GPIO_SetBits(LCD_CS1_PORT, LCD_CS1_PIN);
+	GPIO_SetBits(LCD_CS2_PORT, LCD_CS2_PIN);	
 }
 
 /************************************************************************

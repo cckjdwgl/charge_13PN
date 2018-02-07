@@ -181,14 +181,30 @@ struct  device_table {
 #define LCD1_INDEX			(0)
 #define LCD2_INDEX			(1)
 
+#define MAX_AD_NUMBER			(60)
+#define LCD_MODE0			(0)
+#define LCD_MODE1			(1)
+#define LCD_MODE2			(2)
+#define LCD_MODE_TEST			(3)
+struct  StructAD {
+	unsigned char name[8];  		 //
+	unsigned short count;  		 //计数
+};	 
+
 struct  LCDREG {
 	unsigned char Head;					 //头
 	unsigned char SW_state;  		 //连接状态开关
 	unsigned char NetState;      //状态
-	unsigned char Mode;  				 //LCD 模式
+	unsigned char Mode[DefPortNum];  				 //LCD 模式
+	unsigned char LCDError;      //
 	unsigned char LcdNumber[DefPortNum];  //LCD 屏号
 	unsigned int TestTimerSet;  					//检查屏幕间隔设定值
 	unsigned int TestTimer[DefPortNum];   //
+	unsigned int StateMessageTimerSet;  					//状态显示间隔
+	unsigned int StateMessageTimer;   //
+	unsigned short StateUpColor;   //
+	unsigned short StateDownColor;   //
+//	unsigned char StateChargeColor;   //
 	unsigned int TimeTimerSet;  					//计时显示间隔设定值
 	unsigned int TimeTimer[DefPortNum];   //计时显示间隔
 	unsigned char  SPSwitch;			        //屏保开关
@@ -200,7 +216,7 @@ struct  LCDREG {
 	unsigned int ADTimeSet;		          	//广告间隔        
 	unsigned int ADTime[DefPortNum];		  //广告间隔计数
 	unsigned char  ADID[DefPortNum];			//广告图片ID
-	
+	struct StructAD  AD[MAX_AD_NUMBER];
 	unsigned char POWEROFFTIME[DefPortNum];		//断电时间
 };	 
 
@@ -220,14 +236,16 @@ struct  KEYREG {
 #define NET_OFF 			3
 #define NET_OFF_DONE 	4
 #define NET_DNS_OK 	  5
-#define NET_HTTP_OK 	6		 //正响应
-#define NET_SOCKET_OK 7    //正响应
-#define NET_UDP_OK 	  8
-#define NET_FAT_ON 	  9
-#define NET_FLASH_ON 	  10
-#define NET_FLASH_AREA 	11
-#define NET_FLASH_HEAD 	11
-#define NET_FLASH_OK 	  12
+#define NET_HTTP_OK 	6		        //正响应
+#define NET_SOCKET_OK 7           //正响应
+#define NET_SOCKET_HEART_OK  8    //心跳OK
+#define NET_UDP_OK 	  9
+
+#define NET_FAT_ON 	  	0X10
+#define NET_FLASH_ON 	  0X11
+#define NET_FLASH_AREA 	0X12
+#define NET_FLASH_HEAD 	0X13
+#define NET_FLASH_OK 	  0X14
 
 #define SW_NULL  		0
 #define SW_ON  			1
@@ -281,7 +299,6 @@ extern u8 AINx_ADCch[18];
 extern u16 ADC_Base0[18];			//ADC静态值
 extern u8 device_num[20];
 #ifndef BOOTLOADER_SOURCECODE//ZHZQ_CHANGE
-extern 	u16 AD_count[64];   //广告计数
 extern 	u8 charge_speed[2];   //充电速度
 #endif
 

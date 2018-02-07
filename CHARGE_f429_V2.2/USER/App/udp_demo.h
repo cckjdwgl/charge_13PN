@@ -60,7 +60,7 @@ extern unsigned  char udp1_txbuf[UDP1_TX_BUFSIZE];	//UDP发送数据内容
  
 void udp_demo_test(void);
 void udp_demo_recv(void *arg,struct udp_pcb *upcb,struct pbuf *p,struct ip_addr *addr,u16_t port);
-void udp_demo_senddata(struct udp_pcb *upcb,unsigned  char *buffer);
+err_t udp_demo_senddata(struct udp_pcb *upcb,unsigned  char *buffer);
 void udp_demo_connection_close(struct udp_pcb *upcb);
 
 void dns_demo_test(void);

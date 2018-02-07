@@ -72,6 +72,7 @@ void Device_Rst(void)
 void make_device_mess(void)
 {
 	unsigned  char i;
+	unsigned  short u16temp;
 //	unsigned  char number[8];
 	u32 sn0;
 	sn0=*(vu32*)(0x1FFF7A10);//获取STM32的唯一ID的前24位作为MAC地址后三字节
@@ -83,16 +84,27 @@ void make_device_mess(void)
 	sn0 += 100000;
 	
 	device.SW_state  = SW_ON; 	
-//	sprintf((char*)device.Toolname,"CCKJSZ0001");
+	device.Toolname[0] =0;
+	res_sd = f_open(&fsrc, "config_device.txt", FA_OPEN_EXISTING | FA_READ); 
+	if(res_sd == ERR_OK )
+	{
+		res_sd = f_read (&fsrc,FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead), &fnum);
+		cut_between_strs(FatFile_URL.FileHead,(unsigned  char*)"\"toolname\":\"",(unsigned  char*)"\"", device.Toolname,sizeof(device.Toolname),&u16temp); //读SD卡内容
+		cut_between_strs(FatFile_URL.FileHead,(unsigned  char*)"\"province\":\"",(unsigned  char*)"\"", FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp); //读SD卡内容
+		device.province = atoi((char*)FatFile_URL.FileSourcePath);  //省份		
+	}
+	res_sd=f_close(&fsrc);
+	if(strlen((char*)device.Toolname)==0)
+	{
 //	sprintf((char*)device.Toolname,"99110000001000");
 	sprintf((char*)device.Toolname,"99110%d000",sn0);
+	}	
 	sprintf((char*)device.Version ,"N13.17.15");
 	device.PortNum =DefPortNum;
 	for(i=0;i<sizeof(device.PortId);i++)
 	{
 		device.PortId[i] = i;
 	}
-	device.province = 1;  //省份
 	device.ChargeTimerSet = 1000;   //充电时间检查
 	device.ChargeTimer =0;
 		
@@ -267,10 +279,9 @@ void cmd_File_Requst(void)
 void cmd_File_Tx(void)
 {
 	u16 i;
-	u16 EN;
+//	u16 EN;
 //	u32 len;
 	u8 *mp,*sp;
-		EN = 0XFF;
 		mp = (u8*)FatFile_URL.FileBuf;
 		sp = (u8*)FatFile_URL.FileBufSlave;
 		
@@ -292,7 +303,7 @@ void cmd_File_Tx(void)
 			{
 				if(mp[i]!=sp[i])
 				{
-					EN = 0; break;
+					 break;
 				}
 			}			
 			file_addr +=FatFile_URL.FileBufLen;
@@ -490,95 +501,7 @@ void Get_ADC_BaseLine(void)
 		ADC_Base0[i] = ADC_BUFFER[ADC_ANx_piont[i]];
 	}
 }
-
-void LCD_TEST(void)
-{
-	//0xE0 set_pll ;Start the PLL. Before the start, the system was operated with the crystal oscillator or clock input 
-	//0xE2  set_pll_mn;  Set the PLL 
-	//0xE3  get_pll_mn;  Get the PLL settings 
-	//0xE4  get_pll_status;  Get the current PLL status 	
-	u8 en,i;
-	u16 temp;
-	u32 temp1,temp2;
-	//	0x0036
-	en = 0x00;
-	GPIO_ResetBits(LCD_CS1_PORT, LCD_CS1_PIN);	
-	LCD_REG= 0XB7; 
-	i=10;
-	while(i--);
-	temp= LCD_RAM; 
-	temp<<= 8; 
-	temp+= LCD_RAM; 
-	GPIO_SetBits(LCD_CS1_PORT, LCD_CS1_PIN);	
-
-	i=10;
-	while(i--);	
-	GPIO_ResetBits(LCD_CS1_PORT, LCD_CS1_PIN);	
-	LCD_REG= 0XE3; 
-	i=100;
-	while(i--);
-	temp1= LCD_RAM; 
-	temp1<<= 8; 
-	temp1+= LCD_RAM; 
-	temp1<<= 8; 
-	temp1+= LCD_RAM; 
-	GPIO_SetBits(LCD_CS1_PORT, LCD_CS1_PIN);	
-
-	i=10;
-	while(i--);	
-	GPIO_ResetBits(LCD_CS1_PORT, LCD_CS1_PIN);	
-	LCD_REG= 0XE7; 
-	i=100;
-	while(i--);
-	temp2= LCD_RAM; 
-	temp2<<= 8; 
-	temp2+= LCD_RAM; 
-	temp2<<= 8; 
-	temp2+= LCD_RAM; 
-	GPIO_SetBits(LCD_CS1_PORT, LCD_CS1_PIN);	
-	if((temp!=VT)||(temp1!=0x230204)||(temp2!=0x0293e0))
-	{
-		en = 0xff;
-	}
-
-	if(en == 0xff)
-	{
-		LCD_Init();
-	}
-
-	en = 0x00;
-	GPIO_ResetBits(LCD_CS2_PORT, LCD_CS2_PIN);	
-	LCD_REG= 0XB7; 
-	i=10;
-	while(i--);
-	temp= LCD_RAM; 
-	temp<<= 8; 
-	temp+= LCD_RAM; 
-	GPIO_SetBits(LCD_CS2_PORT, LCD_CS2_PIN);
-
-	i=10;
-	while(i--);	
-	GPIO_ResetBits(LCD_CS2_PORT, LCD_CS2_PIN);	
-	LCD_REG= 0XE3; 
-	i=100;
-	while(i--);
-	temp1= LCD_RAM; 
-	temp1<<= 8; 
-	temp1+= LCD_RAM; 
-	temp1<<= 8; 
-	temp1+= LCD_RAM; 
-	GPIO_SetBits(LCD_CS2_PORT, LCD_CS2_PIN);	
-	if((temp!=VT)||(temp1!=0x230204))
-	{
-		en = 0xff;
-	}
-
-	if(en == 0xff)
-	{
-		LCD_Init1();
-	}
-
-}
+//
 void Version_display(u16 x,u8 *p)
 {
 	UART_BUFFER[0] = 'V';
@@ -773,13 +696,17 @@ err_t dwgl_hex_send(struct tcp_pcb *tpcb, void *arg,u16 len)
 	{
 		return ERR_INPROGRESS;
 	}
-
       /* allocate pbuf */
       ptr = pbuf_alloc(PBUF_TRANSPORT, len , PBUF_POOL);
 //			es->p_tx = pbuf_alloc(PBUF_TRANSPORT, strlen((char*)LocalPoint) , PBUF_POOL);
         /* copy data to pbuf */
 			if(ptr==NULL)
 			{	return ERR_MEM;	}
+			
+			if(tpcb==soket_pcb)
+			{			LCDC.StateUpColor  = GREEN;					}
+			else if(tpcb==http_pcb)
+			{			LCDC.StateUpColor  = RED;					}
 			
       pbuf_take(ptr, (char*)arg, len);
 //static void tcp_echoclient_send(struct tcp_pcb *tpcb, struct echoclient * es)
@@ -835,7 +762,7 @@ err_t tcpl_task(struct tcp_pcb *tpcb)
 	tcpl_cmd(tpcb);
 	if(ChargeM_init.SW_state ==SW_ON)
 	{		
-		if((time_sys-ChargeM_init.LastRxTime>ChargeM_init.HeartTime* DefineHeartTry))  //心跳断了
+		if((time_sys-ChargeM_init.LastRxTime>ChargeM_init.HeartTime* DefineHeartTry))  //心跳断了  60S
 		{
 			ChargeM_init.LastRxTime = time_sys;
 			ChargeM_init.NetState = NET_OFF;
@@ -855,10 +782,10 @@ err_t tcpl_task(struct tcp_pcb *tpcb)
 			res_sd=f_close(&fnew);	
 		}
 
-		if((time_sys-ChargeM_init.LastTxTime >ChargeM_init.HeartTime))    
+		if((time_sys-ChargeM_init.LastTxTime >ChargeM_init.HeartTime))     //5S
 		{
 			ChargeM_init.LastTxTime = time_sys;			
-			if((ChargeM_init.NetState==NET_DNS_OK))  //DNS成功
+			if(ChargeM_init.NetState==NET_DNS_OK)  //DNS成功
 			{
 				if(tpcb==NULL)
 				{
@@ -899,15 +826,18 @@ err_t tcpl_task(struct tcp_pcb *tpcb)
 					}
 				}
 			}
-			else if((ChargeM_init.NetState==NET_SOCKET_OK))  //SOCKET成功
+			else if(ChargeM_init.NetState==NET_SOCKET_OK || ChargeM_init.NetState==NET_SOCKET_HEART_OK)  //SOCKET成功
 			{
-				if(tpcb->state ==ESTABLISHED)
+				if(tpcb->state ==ESTABLISHED)   
 				{
+					if(ChargeM_init.NetState==NET_SOCKET_OK || time_sys-ChargeM_init.LastRxTime>(ChargeM_init.HeartTime* DefineHeartTry/3)) //20秒一次
+					{
 					make_soket_10001(tcp1_txbuf);
 					dwgl_hex_send(tpcb, tcp1_txbuf,(tcp1_txbuf[2]*245+tcp1_txbuf[3]+41));
 					sprintf((char*)LocalPoint, "SOKET send:%d ID=10001 IP=%d.%d.%d.%d.%d\r\n",time_sys,soket_lwip.remoteip[0],soket_lwip.remoteip[1],soket_lwip.remoteip[2],soket_lwip.remoteip[3],soket_lwip.remote_port);
 					Str_addto_Str(&DebugStr,LocalPoint);
 					printf("SOKET send:%d ID=10001\r\n",time_sys);
+					}
 				}
 				else
 				{
@@ -925,7 +855,7 @@ err_t tcpl_task(struct tcp_pcb *tpcb)
 					}
 				}
 			}
-			else if((ChargeM_init.NetState==NET_ON))
+			else if(ChargeM_init.NetState==NET_ON)
 			{
 				get_input_dns(ChargeM_init.DnsNameStr);
 			}
@@ -1073,7 +1003,7 @@ err_t udp1_task(struct udp_pcb *upcb)
 				sprintf((char*)LocalPoint, "who are you?");
 				udp_demo_senddata(upcb,LocalPoint);
 				
-				if(time_sys-UdpdebugM_init.LastRxTime>UdpdebugM_init.HeartTime*DefineHeartTry)
+				if(time_sys-UdpdebugM_init.LastRxTime>UdpdebugM_init.HeartTime*DefineUDPTry)
 				{
 					sprintf((char*)LocalPoint, "bye bey");
 					udp_demo_senddata(upcb,LocalPoint);
@@ -1092,8 +1022,8 @@ err_t udp1_task(struct udp_pcb *upcb)
 			}	
 			else if(UdpdebugM_init.NetState == NET_UDP_OK )
 			{
-					sprintf((char*)LocalPoint, "udpdebug ok");
-					udp_demo_senddata(upcb,LocalPoint);
+//					sprintf((char*)LocalPoint, "udpdebug ok");
+//					udp_demo_senddata(upcb,LocalPoint);
 			}
 			else if(UdpdebugM_init.NetState == NET_NULL )
 			{
@@ -1106,8 +1036,7 @@ err_t udp1_task(struct udp_pcb *upcb)
 					udp_demo_connection_close(udpdebug_pcb); //先关闭
 					udp_demo_test();//再重新打开
 				}
-			}
-			
+			}			
 		}
 			
 	}		
@@ -1119,7 +1048,7 @@ err_t tcpl_cmd(struct tcp_pcb *tpcb)
   err_t wr_err = ERR_OK;	
 	unsigned  char *cmd_bufer;
 	u16 mess_id;
-	u16 i;
+//	u16 i;
 	unsigned char *LocalPoint;
 //	unsigned int LocalPointSize;
 	
@@ -1131,6 +1060,9 @@ err_t tcpl_cmd(struct tcp_pcb *tpcb)
 	{
 		return wr_err;
 	}
+	LCDC.StateDownColor  = GREEN;
+	time_uart1=time_sys;
+	
 	sprintf((char*)LocalPoint, "SOKET cmd:%d ID=%d\n",time_sys,mess_id);
 	Str_addto_Str(&DebugStr,LocalPoint);
 	tft_DisplayStr_debug(tft_debug_x,tft_debug_y, &DebugStr,WHITE, BLACK,3);
@@ -1147,12 +1079,9 @@ err_t tcpl_cmd(struct tcp_pcb *tpcb)
 						ChargeM_init.NetState = NET_SOCKET_OK;
 						ChargeM_init.LastRxTime = time_sys;
 					}
-//					else
-//					{
-//						ChargeM_init.NetState = NET_OFF;;
-//					}
 						break;
 		case  10001: 
+						ChargeM_init.NetState = NET_SOCKET_HEART_OK;
 						ChargeM_init.LastRxTime = time_sys;
 						break;
 		case  10003:      //端口查询通知
@@ -1198,6 +1127,7 @@ err_t tcp2_cmd(struct tcp_pcb *tpcb)
   err_t wr_err = ERR_OK;
 	unsigned  char *cmd_bufer;
 //	u16 i,j;
+	u16 len;
 	u16 u16temp;
 	struct http_url *HttpU;
 	unsigned char *LocalPoint;
@@ -1209,6 +1139,7 @@ err_t tcp2_cmd(struct tcp_pcb *tpcb)
 		return wr_err;
 	}
 	cmd_bufer = tcp2_rxbuf;
+	LCDC.StateDownColor  = RED;
 	
 	sprintf((char*)LocalPoint, "HTTP cmd:%d\n",time_sys);
 	Str_addto_Str(&DebugStr,LocalPoint);
@@ -1239,119 +1170,74 @@ err_t tcp2_cmd(struct tcp_pcb *tpcb)
 	HttpM_init.HttpUrl->LastRxTime = time_sys; //当前URL接收
 	
 	HttpU = (struct http_url*)HttpM_init.HttpUrl;
-	if(strcmp("SSI", (char*)HttpU->type) == 0)
-	{	
-//		res_sd = f_mount(&fs,"0:",1);		
-//		res_sd = f_opendir (&dirs, "area1");
-		res_sd = f_open(&fnew, "area1/area1_info.txt", FA_CREATE_ALWAYS | FA_WRITE); 	 		
-    /* 将指定存储区内容写入到文件内 */
-		sprintf((char*)FatFile_URL.FileBufSlave,"time_sys:%d\r\n",time_sys);
-		res_sd=f_write(&fnew,FatFile_URL.FileBufSlave,strlen((char*)FatFile_URL.FileBufSlave),&fnum);
-		res_sd=f_write(&fnew,cmd_bufer,HttpM_init.RxLength,&fnum);
-    res_sd=f_close(&fnew);
-//		res_sd=f_closedir (&dirs);
-//	res_sd=f_unlink (const TCHAR* path);  //删除
-		
-		make_area1_get(cmd_bufer);				
-		HttpM_init.HttpUrl->SW_state = SW_OFF;		//当前的SSI任务完成挂起						
-		HttpM_init.HttpUrl->NetState=NET_OFF;			//当前的SSI任务完成		
-		HttpU_buffer[1].SW_state = SW_ON;		//当前的任务开启		
-		HttpU_buffer[2].SW_state = SW_ON;		//当前的任务开启		
-		HttpU_buffer[3].SW_state = SW_ON;		//当前的任务开启		
-		HttpU_buffer[4].SW_state = SW_ON;		//当前的任务开启				
-	}
-	if(strcmp("S20", (char*)HttpU->type) == 0)
-	{
-			if(HttpM_init.HttpUrl->NetState == NET_ON)
+	if(HttpU->type[0] == 'S')
+	{		
+		if(HttpM_init.HttpUrl->NetState == NET_ON)
+		{
+			cut_between_strs(cmd_bufer,(unsigned  char*)"HTTP/1.1 200" ,(unsigned  char*)"OK", FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);			
+			if(strlen((char*)FatFile_URL.FileHead))     //有收到正确反回
 			{
-			HttpM_init.HttpUrl->NetState= NET_HTTP_OK;
-			res_sd = f_open(&fnew, "area2/area2_info.txt", FA_CREATE_ALWAYS | FA_WRITE); 	 		
-			sprintf((char*)FatFile_URL.FileBufSlave,"time_sys:%d\r\n",time_sys);
-			res_sd=f_write(&fnew,FatFile_URL.FileBufSlave,strlen((char*)FatFile_URL.FileBufSlave),&fnum);
-			res_sd=f_write(&fnew,cmd_bufer,HttpM_init.RxLength,&fnum);
-			res_sd=f_close(&fnew);			
-			}
-			else if(HttpM_init.HttpUrl->NetState == NET_HTTP_OK)
-			{
-			res_sd = f_open(&fnew, "area2/area2_info.txt", FA_OPEN_ALWAYS | FA_WRITE); 	 		
+				HttpM_init.HttpUrl->NetState= NET_HTTP_OK;
+				res_sd = f_open(&fnew, (char *)HttpU->DestPath, FA_CREATE_ALWAYS | FA_WRITE); 	 		
+				sprintf((char*)FatFile_URL.FileBufSlave,"time_sys:%d\r\n",time_sys);
+				res_sd=f_write(&fnew,FatFile_URL.FileBufSlave,strlen((char*)FatFile_URL.FileBufSlave),&fnum);
+				res_sd=f_write(&fnew,cmd_bufer,HttpM_init.RxLength,&fnum);
+				res_sd=f_close(&fnew);	
+			}				
+		}
+		else if(HttpM_init.HttpUrl->NetState == NET_HTTP_OK)
+		{
+			res_sd = f_open(&fnew, (char *)HttpU->DestPath, FA_OPEN_ALWAYS | FA_WRITE); 	 		
 			res_sd = f_lseek(&fnew, fnew.fsize);
 			res_sd=f_write(&fnew,cmd_bufer,HttpM_init.RxLength,&fnum);
 			res_sd=f_close(&fnew);			
-			}
-			if(HttpM_init.RxLength<1420)
+		}
+		if(HttpM_init.RxLength<1420)
+		{
+			HttpM_init.HttpUrl->SW_state = SW_OFF;		//当前的任务完成挂起		
+			HttpM_init.HttpUrl->NetState = NET_OFF;		//当前的任务完成关闭TCP	
+			if(strcmp("SSI", (char*)HttpU->type) == 0)
 			{
-			wr_err = make_area2_get(cmd_bufer);		
+				wr_err = make_area1_get(cmd_bufer);				
+				HttpU_buffer[1].SW_state = SW_ON;		//当前的任务开启		
+				HttpU_buffer[2].SW_state = SW_ON;		//当前的任务开启		
+				HttpU_buffer[3].SW_state = SW_ON;		//当前的任务开启		
+				HttpU_buffer[4].SW_state = SW_ON;		//当前的任务开启				
+			}		
+			if(strcmp("S20", (char*)HttpU->type) == 0)
+			{
+				wr_err = make_area2_get(cmd_bufer);				
+			}
+			if(strcmp("S30", (char*)HttpU->type) == 0)
+			{
+			}
+			if(strcmp("S40", (char*)HttpU->type) == 0)
+			{
+				wr_err = make_area4_get(cmd_bufer);				
+			}
+			if(strcmp("S50", (char*)HttpU->type) == 0)
+			{
+				wr_err = make_area5_get(cmd_bufer);				
+			}
 			res_sd = f_open(&fnew, "logs/log_http.txt", FA_OPEN_ALWAYS | FA_WRITE); 	 		
 			res_sd = f_lseek(&fnew, fnew.fsize);
-			sprintf((char*)FatFile_URL.FileBufSlave,"make_area2_get:%d\r\n",wr_err);
+			sprintf((char*)FatFile_URL.FileBufSlave,"make %s:%d\r\n",(char *)HttpU->DestPath,wr_err);
 			res_sd=f_write(&fnew,FatFile_URL.FileBufSlave,strlen((char*)FatFile_URL.FileBufSlave),&fnum);
 			res_sd=f_close(&fnew);			
-			HttpM_init.HttpUrl->SW_state = SW_OFF;		//当前的任务完成挂起		
-			HttpM_init.HttpUrl->NetState = NET_OFF;		//当前的任务完成关闭TCP	
-			}							
+		}							
 	}
-	if(strcmp("S40", (char*)HttpU->type) == 0)
-	{
-			if(HttpM_init.HttpUrl->NetState == NET_ON)
-			{
-			HttpM_init.HttpUrl->NetState= NET_HTTP_OK;
-			res_sd = f_open(&fnew, "area4/area4_info0.txt", FA_CREATE_ALWAYS | FA_WRITE); 	 		
-			sprintf((char*)FatFile_URL.FileBufSlave,"time_sys:%d\r\n",time_sys);
-			res_sd=f_write(&fnew,FatFile_URL.FileBufSlave,strlen((char*)FatFile_URL.FileBufSlave),&fnum);
-			res_sd=f_write(&fnew,cmd_bufer,HttpM_init.RxLength,&fnum);
-			res_sd=f_close(&fnew);			
-			}
-			else if(HttpM_init.HttpUrl->NetState == NET_HTTP_OK)
-			{
-			res_sd = f_open(&fnew, "area4/area4_info0.txt", FA_OPEN_ALWAYS | FA_WRITE); 	 		
-			res_sd = f_lseek(&fnew, fnew.fsize);
-			res_sd=f_write(&fnew,cmd_bufer,HttpM_init.RxLength,&fnum);
-			res_sd=f_close(&fnew);			
-			}
-			if(HttpM_init.RxLength<1420)
-			{
-//			wr_err = make_area4_get(cmd_bufer);		
-//			res_sd = f_open(&fnew, "logs/log_http.txt", FA_OPEN_ALWAYS | FA_WRITE); 	 		
-//			res_sd = f_lseek(&fnew, fnew.fsize);
-//			sprintf((char*)FatFile_URL.FileBufSlave,"area4/area4_get:%d\r\n",wr_err);
-//			res_sd=f_write(&fnew,FatFile_URL.FileBufSlave,strlen((char*)FatFile_URL.FileBufSlave),&fnum);
-//			res_sd=f_close(&fnew);			
-			HttpM_init.HttpUrl->SW_state = SW_OFF;		//当前的任务完成挂起		
-			HttpM_init.HttpUrl->NetState = NET_OFF;		//当前的任务完成关闭TCP	
-			}							
-	}
-	if(strcmp("S41", (char*)HttpU->type) == 0)
-	{
-			HttpM_init.HttpUrl->SW_state = SW_OFF;		//当前的任务完成挂起		
-			HttpM_init.HttpUrl->NetState = NET_OFF;		//当前的任务完成关闭TCP	
-			res_sd = f_open(&fnew, "area4/area4_info1.txt", FA_CREATE_ALWAYS | FA_WRITE); 	 		
-			sprintf((char*)FatFile_URL.FileBufSlave,"time_sys:%d\r\n",time_sys);
-			res_sd=f_write(&fnew,FatFile_URL.FileBufSlave,strlen((char*)FatFile_URL.FileBufSlave),&fnum);
-			res_sd=f_write(&fnew,cmd_bufer,HttpM_init.RxLength,&fnum);
-			res_sd=f_close(&fnew);
-	}
-	if(strcmp("S50", (char*)HttpU->type) == 0)
-	{
-			HttpM_init.HttpUrl->SW_state = SW_OFF;		//当前的任务完成挂起		
-			HttpM_init.HttpUrl->NetState = NET_OFF;		//当前的任务完成关闭TCP	
-			res_sd = f_open(&fnew, "area5/area5_info.txt", FA_CREATE_ALWAYS | FA_WRITE); 	 		
-			sprintf((char*)FatFile_URL.FileBufSlave,"time_sys:%d\r\n",time_sys);
-			res_sd=f_write(&fnew,FatFile_URL.FileBufSlave,strlen((char*)FatFile_URL.FileBufSlave),&fnum);
-			res_sd=f_write(&fnew,cmd_bufer,HttpM_init.RxLength,&fnum);
-			res_sd=f_close(&fnew);
-	}
-	
 //	if(strcmp("G10", (char*)HttpU->type) == 0)
 	if(HttpU->type[0] == 'G')
 	{
 		if(HttpM_init.HttpUrl->NetState == NET_ON)
 		{
-			cut_between_strs(cmd_bufer,(unsigned  char*)"Content-Length: " ,(unsigned  char*)"\r\n", FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);
-			if(strlen((char*)FatFile_URL.FileHead))     //有收到长度
+			cut_between_strs(cmd_bufer,(unsigned  char*)"HTTP/1.1 200" ,(unsigned  char*)"OK", FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);			
+			if(strlen((char*)FatFile_URL.FileHead))     //有收到正确反回
 			{
-				HttpM_init.HttpUrl->TotLength = atoi((char*)FatFile_URL.FileHead);
 				HttpM_init.HttpUrl->NetState= NET_HTTP_OK;
 				HttpM_init.HttpUrl->PresentLength = 0;						
+				cut_between_strs(cmd_bufer,(unsigned  char*)"Content-Length: " ,(unsigned  char*)"\r\n", FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);
+				HttpM_init.HttpUrl->TotLength = atoi((char*)FatFile_URL.FileHead);
 				
 				FatFile_URL.SW_state = SW_ON;
 				FatFile_URL.NetState = NET_ON;
@@ -1361,6 +1247,12 @@ err_t tcp2_cmd(struct tcp_pcb *tpcb)
 				cmd_File_Requst();
 				
 				res_sd = f_open(&fnew, (char*)HttpM_init.HttpUrl->DestPath, FA_CREATE_ALWAYS | FA_WRITE); 	
+				len = find_strs(cmd_bufer,(unsigned  char *)"\r\n\r\n",HttpM_init.RxLength,&u16temp);
+				if(len)
+				{
+					res_sd=f_write(&fnew,&cmd_bufer[u16temp],len,&fnum);
+					HttpM_init.HttpUrl->PresentLength = len; 
+				}				
 				res_sd=f_close(&fnew);
 				
 				res_sd = f_open(&fnew, "logs/log_http.txt", FA_OPEN_ALWAYS | FA_WRITE); 	 		
@@ -1388,26 +1280,10 @@ err_t tcp2_cmd(struct tcp_pcb *tpcb)
 				HttpM_init.HttpUrl->SW_state = SW_NULL;
 				HttpM_init.HttpUrl->NetState = NET_OFF;
 				HttpM_init.HttpUrl->PresentLength = 0;
-				if(strcmp("G10", (char*)HttpU->type) == 0)
+//				if(strcmp("G10", (char*)HttpU->type) == 0)
 				{
-						done_area1_get(cmd_bufer);		
+						done_area1_get(HttpM_init.HttpUrl->SourcePath);		
 				}
-				if(strcmp("G20", (char*)HttpU->type) == 0)
-				{
-						done_area2_get(cmd_bufer);		
-				}
-				if(strcmp("G30", (char*)HttpU->type) == 0)
-				{
-					
-				}
-				if(strcmp("G40", (char*)HttpU->type) == 0)
-				{
-					
-				}
-				if(strcmp("G50", (char*)HttpU->type) == 0)
-				{
-					
-				}									
 			}
 		}		
 	}
@@ -1417,168 +1293,218 @@ err_t tcp2_cmd(struct tcp_pcb *tpcb)
 
 extern err_t udp1_cmd(struct udp_pcb *upcb)
 {
+//	"CMD":{["":""],[],[]}   //命令格式	
   err_t wr_err = ERR_OK;
-	u16 i,j;
+	u16 i;
+	u16 j;
+	u32 sn0;
+  FILINFO finfo1;
+//  FILINFO finfo2;
 	unsigned  char *cmd_bufer;
-	unsigned  char *key_point;
 	unsigned  char port_n =0;
-	unsigned  char number[8];
 	unsigned char *LocalPoint;
-//	unsigned int LocalPointSize;
+	unsigned int LocalPointSize;
 	
 	LocalPoint = data_b;
+	LocalPointSize = sizeof(data_b);
 	if(UdpdebugM_init.RxLength ==0)
 	{
 		return wr_err;
 	}
 	cmd_bufer = udp1_rxbuf;
 	UdpdebugM_init.LastRxTime = time_sys;
+	LCDC.StateDownColor  = BLUE;
 	
 	if(UdpdebugM_init.NetState == NET_ON)
 	{
 		if(cmd_bufer[0] =='W'&&cmd_bufer[1] =='A'&&cmd_bufer[2] =='Y')   //who are you
 		{
 			UdpdebugM_init.NetState = NET_UDP_OK;
+			sprintf((char*)LocalPoint, "udpdebug ok");
+			udp_demo_senddata(upcb,LocalPoint);
 		}
 	}
 	else if(UdpdebugM_init.NetState == NET_UDP_OK)
 	{
 		if(cmd_bufer[0] =='D'&&cmd_bufer[1] =='N'&&cmd_bufer[2] =='S')
 		{
-			for(i=0;i<DNS_MAX_NAME_LENGTH;i++)
+			i = cut_between_strs(cmd_bufer,(unsigned  char*)"\"",(unsigned  char*)"\"", FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&j);			
+			if(strlen((char*)FatFile_URL.FileSourcePath)<DNS_MAX_NAME_LENGTH)
+//			if (strcmp((unsigned  char*)LocalPoint, (const char *)"?")== 0)
 			{
-					if((cmd_bufer[3+i]==0))
-					{
-						break;
-					}
-			}
-			if(i!=DNS_MAX_NAME_LENGTH)
-			{			
-				for(i=0;i<DNS_MAX_NAME_LENGTH;i++)
-				{
-						if((cmd_bufer[3+i]>='a'&&cmd_bufer[3+i]<='z')||(cmd_bufer[3+i]>='A'&&cmd_bufer[3+i]<='Z'))
-						{
-							break;
-						}
-				}
-			}
-			if(i!=DNS_MAX_NAME_LENGTH)
-			{			
-				get_input_dns(&cmd_bufer[3+i]);
+				get_input_dns(FatFile_URL.FileSourcePath);
+				sprintf((char*)LocalPoint, "%s:ok %d",cmd_bufer,i);
+				udp_demo_senddata(upcb,LocalPoint);										
 			}
 		}
 		else if(cmd_bufer[0] =='U'&&cmd_bufer[1] =='R'&&cmd_bufer[2] =='L')		//URL信息
 		{
-		
-		}
-		else if(cmd_bufer[0] =='S'&&cmd_bufer[1] =='S'&&cmd_bufer[2] =='I')   //服务器信息
-		{
-		
-		}
-		else if(cmd_bufer[0] =='R'&&cmd_bufer[1] =='E'&&cmd_bufer[2] =='A'&&cmd_bufer[3] =='D')   //读信息
-		{
-			for(i=0;i<strlen((char*)cmd_bufer);i++)
+			i = cut_between_strs(cmd_bufer,(unsigned  char*)"\"http:",(unsigned  char*)"bmp\"", FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&j);
+			if(strlen((char*)FatFile_URL.FileSourcePath))
 			{
-				wr_err = ERR_OK;
-				sprintf((char*)LocalPoint, "mcuid?");
-				for(j=0;j<(sizeof("mcuid?"))-1;j++)
-				{
-					if(LocalPoint[j] != cmd_bufer[i+j])
-					{
-						wr_err = ERR_VAL;
-						break;
-					}				
-				}
-				
-				if(wr_err == ERR_OK)  //有收到长度
-				{
-				//	u32 sn0_temp;
-					u32 sn0;
-					sn0=*(vu32*)(0x1FFF7A10);//获取STM32的唯一ID的前24位作为MAC地址后三字节
-					sprintf((char*)LocalPoint, "mcuid:%X",sn0);
-					sn0=*(vu32*)(0x1FFF7A14);//获取STM32的唯一ID的前24位作为MAC地址后三字节
-					sprintf((char*)LocalPoint, "%s %X",(char*)LocalPoint,sn0);
-					sn0=*(vu32*)(0x1FFF7A18);//获取STM32的唯一ID的前24位作为MAC地址后三字节
-					sprintf((char*)LocalPoint, "%s %X",(char*)LocalPoint,sn0);
-					udp_demo_senddata(upcb,LocalPoint);					
-				}	
+				sprintf((char*)LocalPoint, "%s:ok %d",cmd_bufer,i);
 			}
-		}	
-		else if(cmd_bufer[0] =='S'&&cmd_bufer[1] =='E'&&cmd_bufer[2] =='T')   //POWER  上电 
+		}
+		else if(cmd_bufer[0] =='h'&&cmd_bufer[1] =='e'&&cmd_bufer[2] =='l'&&cmd_bufer[3] =='p')		//help
 		{
-			for(i=0;i<strlen((char*)cmd_bufer);i++)
+			sprintf((char*)LocalPoint, "help:ok\r\ncmd:DNS;ls;read;set;delete;help\r\n");
+			udp_demo_senddata(upcb,LocalPoint);	 
+		}
+		else if(cmd_bufer[0] =='l'&&cmd_bufer[1] =='s')		//
+		{
+			i = cut_between_strs(cmd_bufer,(unsigned  char*)"\"sd\":\"",(unsigned  char*)"\"", FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&j); //读SD目录
+			if(strlen((char*)FatFile_URL.FileSourcePath))
 			{
-				wr_err = ERR_OK;
-				sprintf((char*)LocalPoint, "chargeidandtime:");
-				for(j=0;j<(sizeof("chargeidandtime:"))-1;j++)
+				if (f_opendir(&dirs, (const TCHAR*)FatFile_URL.FileSourcePath) == FR_OK) 
 				{
-					if(LocalPoint[j] != cmd_bufer[i+j])
-					{
-						wr_err = ERR_VAL;
-						break;
-					}				
+					sprintf((char*)LocalPoint, "%s:ok\r\n",cmd_bufer);
+					udp_demo_senddata(upcb,LocalPoint);				
+					finfo1.lfname = (char*)FatFile_URL.FileDestPath;
+					finfo1.lfsize = sizeof(FatFile_URL.FileDestPath);
+					while (f_readdir(&dirs, &finfo1) == FR_OK)
+					{														
+						if(!finfo1.fname[0])	  //文件名不为空，如果为空，则表明该目录下面的文件已经读完了
+						{
+							break;								
+						}         							
+//						if(finfo1.fattrib&AM_DIR||finfo1.fattrib&AM_ARC) //文件类型
+						{
+							sprintf((char*)LocalPoint, "(%X)%s size=%dB (%s)\r\n",finfo1.fattrib,finfo1.fname,(unsigned int)finfo1.fsize, finfo1.lfname);
+							udp_demo_senddata(upcb,LocalPoint);	 
+							Delay_10ms(2);	                                   //延时10ms
+						}
+					}
+					finfo1.lfname =0;
+					finfo1.lfsize =0;
+				}				
+				else
+				{
+					sprintf((char*)LocalPoint, "%s:error %d\r\n",cmd_bufer,res_sd);
+					udp_demo_senddata(upcb,LocalPoint);										
 				}
-				
-				if(wr_err == ERR_OK)  //有收到长度
+				res_sd=f_closedir(&dirs);	
+			}			
+		}
+		else if(cmd_bufer[0] =='d'&&cmd_bufer[1] =='e'&&cmd_bufer[2] =='l'&&cmd_bufer[3] =='e')		//删除
+		{
+			i = cut_between_strs(cmd_bufer,(unsigned  char*)"\"sd\":\"",(unsigned  char*)"\"", FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&j); //delete SD卡内容
+			if(strlen((char*)FatFile_URL.FileSourcePath))
+			{
+				res_sd = f_open(&fsrc, (char*)FatFile_URL.FileSourcePath, FA_OPEN_EXISTING | FA_WRITE); 	
+				if(res_sd==FR_OK)
 				{
-					key_point = &cmd_bufer[i+j];  //取地址头
-					for(j=0;j<sizeof(number)-1;j++)
+					res_sd=f_close(&fsrc);	
+					res_sd = f_unlink((char*)FatFile_URL.FileSourcePath);
+					sprintf((char*)LocalPoint, "%s:ok %d\r\n",cmd_bufer,res_sd);
+					udp_demo_senddata(upcb,LocalPoint);	
+				}
+				else
+				{
+					sprintf((char*)LocalPoint, "%s:error %d\r\n",cmd_bufer,res_sd);
+					udp_demo_senddata(upcb,LocalPoint);										
+					res_sd=f_close(&fsrc);	
+				}
+			}			
+		}
+		else if(cmd_bufer[0] =='r'&&cmd_bufer[1] =='e'&&cmd_bufer[2] =='a'&&cmd_bufer[3] =='d')   //读信息
+		{				
+			i = cut_between_strs(cmd_bufer,(unsigned  char*)"\"mcuid\":\"",(unsigned  char*)"\"", LocalPoint,LocalPointSize,&j);			
+//			if(strlen((char*)LocalPoint))
+			if (strcmp(( char*)LocalPoint, (const char *)"?")== 0)
+			{
+				sn0=*(vu32*)(0x1FFF7A10);//获取STM32的唯一ID的前24位作为MAC地址后三字节
+				sprintf((char*)LocalPoint, "mcuid:%X",sn0);
+				sn0=*(vu32*)(0x1FFF7A14);//获取STM32的唯一ID的前24位作为MAC地址后三字节
+				sprintf((char*)LocalPoint, "%s %X",(char*)LocalPoint,sn0);
+				sn0=*(vu32*)(0x1FFF7A18);//获取STM32的唯一ID的前24位作为MAC地址后三字节
+				sprintf((char*)LocalPoint, "%s %X",(char*)LocalPoint,sn0);
+				udp_demo_senddata(upcb,LocalPoint);										
+			}
+			i = cut_between_strs(cmd_bufer,(unsigned  char*)"\"sd\":\"",(unsigned  char*)"\"", FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&j); //读SD卡内容
+			if(strlen((char*)FatFile_URL.FileSourcePath))
+			{
+				res_sd = f_open(&fsrc, (char*)FatFile_URL.FileSourcePath, FA_OPEN_EXISTING | FA_READ); 	
+//				res_sd = f_open(&fnew, (char*)LocalPoint, FA_OPEN_ALWAYS | FA_WRITE); 	
+				if(res_sd==FR_OK)
+				{
+					sprintf((char*)LocalPoint, "%s:fsize %d B\r\n",cmd_bufer,(unsigned int)fsrc.fsize);
+					udp_demo_senddata(upcb,LocalPoint);	
+					while(1)
 					{
-						if(key_point[j]==',')
+//						res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum);
+						res_sd = f_read (&fsrc, LocalPoint, 1024, &fnum);
+						LocalPoint[fnum] = 0;						
+						udp_demo_senddata(upcb,LocalPoint);	
+						Delay_10ms(2);	                                   //延时10ms
+						if(fnum!=1024)
 						{
-									break;
+							sprintf((char*)LocalPoint, "%s:ok\r\n",cmd_bufer);
+							udp_demo_senddata(upcb,LocalPoint);	
+							break;
 						}
-						number[j] = key_point[j];
 					}
-					number[j] = 0;
-					port_n = atoi((char*)number);
-
-					key_point = &key_point[j+1];  //取地址头
-					for(j=0;j<sizeof(number)-1;j++)
-					{
-						if(key_point[j]==',')
-						{
-									break;
-						}
-						number[j] = key_point[j];
-					}
-					number[j] = 0;
-					if(port_n<DefPortNum)
-					{
-					device.PortPowerSetTime[port_n] = atoi((char*)number);
+				}
+				else
+				{
+					sprintf((char*)LocalPoint, "%s:error %d\r\n",cmd_bufer,res_sd);
+					udp_demo_senddata(upcb,LocalPoint);										
+				}
+				res_sd=f_close(&fsrc);	
+			}			
+		}	
+		else if(cmd_bufer[0] =='s'&&cmd_bufer[1] =='e'&&cmd_bufer[2] =='t')   
+		{
+			i = cut_between_strs(cmd_bufer,(unsigned  char*)"\"chargetime\":\"",(unsigned  char*)"\"", LocalPoint,LocalPointSize,&j);		 //POWER  上电 	
+//				if (strcmp((unsigned  char*)LocalPoint, (const char *)"?")== 0)
+			if(strlen((char*)LocalPoint))
+			{
+				for(port_n=0;port_n<DefPortNum;port_n++)
+				{
+					device.PortPowerSetTime[port_n] = atoi((char*)LocalPoint);
 					device.PortPowerUseTime[port_n] = device.PortPowerSetTime[port_n];
-					}
-				}			
-			}	
-			
-			for(i=0;i<strlen((char*)cmd_bufer);i++)
-			{
-				wr_err = ERR_OK;
-				sprintf((char*)LocalPoint, ":");
-				for(j=0;j<(sizeof("chargeidandtime:"))-1;j++)
-				{
-					if(LocalPoint[j] != cmd_bufer[i+j])
-					{
-						wr_err = ERR_VAL;
-						break;
-					}				
 				}
-				
-				if(wr_err == ERR_OK)  //有收到长度
+				sprintf((char*)LocalPoint, "%s:ok\r\n",cmd_bufer);
+				udp_demo_senddata(upcb,LocalPoint);										
+			}						
+			i = cut_between_strs(cmd_bufer,(unsigned  char*)"\"ssi\":\"",(unsigned  char*)"\"", FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&j);		 //服务器信息	
+			if(strlen((char*)FatFile_URL.FileHead))
+			{
+				res_sd = f_open(&fsrc, "config_ssi.txt", FA_CREATE_ALWAYS | FA_WRITE); 
+				if(res_sd==ERR_OK)
 				{
-					key_point = &cmd_bufer[i+j];  //取地址头
-					for(j=0;j<sizeof(number)-1;j++)
-					{
-						if(key_point[j]==',')
-						{
-									break;
-						}
-						number[j] = key_point[j];
-					}
-					number[j] = 0;
-					port_n = atoi((char*)number);
-				}			
-			}	
+					sprintf((char*)LocalPoint, "\"SSI\":\"%s\"",FatFile_URL.FileHead);
+					res_sd=f_write(&fsrc,LocalPoint,strlen((char*)LocalPoint),&fnum);
+				}
+				res_sd=f_close(&fsrc);					
+				sprintf((char*)LocalPoint, "%s:ok",cmd_bufer);
+				udp_demo_senddata(upcb,LocalPoint);										
+			}													
+			i = cut_between_strs(cmd_bufer,(unsigned  char*)"\"device\":{",(unsigned  char*)"}",FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&j);		 //设备号等设置
+			if(strlen((char*)FatFile_URL.FileHead))
+			{
+				res_sd = f_open(&fsrc, "config_device.txt", FA_CREATE_ALWAYS | FA_WRITE); 
+				if(res_sd==ERR_OK)
+				{
+					sprintf((char*)LocalPoint, "%s",FatFile_URL.FileHead);
+					res_sd=f_write(&fsrc,LocalPoint,strlen((char*)LocalPoint),&fnum);				
+				}
+				res_sd=f_close(&fsrc);					
+				sprintf((char*)LocalPoint, "%s:ok",cmd_bufer);
+				udp_demo_senddata(upcb,LocalPoint);										
+			}													
+			i = cut_between_strs(cmd_bufer,(unsigned  char*)"\"udp\":\"",(unsigned  char*)"\"",FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&j);		 //关闭UDP
+			if(strcmp((char*)FatFile_URL.FileHead, (const char *)"close")== 0)
+			{
+				sprintf((char*)LocalPoint, "%s:ok",cmd_bufer);
+				udp_demo_senddata(upcb,LocalPoint);										
+				UdpdebugM_init.NetState = NET_NULL;					
+				udpdebug_lwip.remoteip[0]=0;	
+				udpdebug_lwip.remoteip[1]=0;
+				udpdebug_lwip.remoteip[2]=0;
+				udpdebug_lwip.remoteip[3]=0;	
+				udpdebug_lwip.remote_port = 32768;
+				udp_demo_connection_close(udpdebug_pcb); //先关闭
+			}													
 		}
 	}
 	else
@@ -1629,6 +1555,7 @@ void make_soket_mess(void)
 void make_http_mess(void)
 {
 	unsigned  char i;
+	unsigned  short u16temp;
 	//默认后台
 //	unsigned  char temp_url[]="http://wctestapi.freechargechina.com:8011/siteApi/site/v1/device/register ";   
 	unsigned  char BaseUrl[]="http://wctestapi.freechargechina.com:8011/siteApi";
@@ -1642,10 +1569,21 @@ void make_http_mess(void)
 	HttpU_buffer[i-1].next  =&HttpU_buffer[0];  //形成链
 	
 //初始化默认后台初始	
+	res_sd = f_open(&fsrc, "config_ssi.txt", FA_OPEN_EXISTING | FA_READ); 	
+	if(res_sd == ERR_OK )
+	{
+		res_sd = f_read (&fsrc,FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead), &fnum);
+		cut_between_strs(FatFile_URL.FileHead,(unsigned  char*)"\"SSI\":\"",(unsigned  char*)"\"", HttpU_buffer[0].url,sizeof(HttpU_buffer[0].url),&u16temp); //读SD卡内容
+	}
+	res_sd=f_close(&fsrc);
+	if(strlen((char*)HttpU_buffer[0].url))
+	{
+		sprintf((char*)HttpU_buffer[0].url, "%s/site/v1/device/register",BaseUrl);	
+	}	
 	HttpU_buffer[0].SW_state = SW_ON;  //使用
 	HttpU_buffer[0].NetState  = NET_ON;  //NET工作开启
 	sprintf((char*)HttpU_buffer[0].type , "SSI");  //URL类型
-	sprintf((char*)HttpU_buffer[0].url, "%s/site/v1/device/register",BaseUrl);
+	sprintf((char*)HttpU_buffer[0].DestPath, "area1/area1_info.txt");
 	HttpU_buffer[0].HeartTime = DefineHeartTime;
 //	HttpU_buffer[0].sent = make_http_post;
 	HttpU_buffer[0].sent = make_http_InitSoket;
@@ -1655,25 +1593,30 @@ void make_http_mess(void)
 	HttpU_buffer[1].NetState  = NET_OFF_DONE;  //挂起任务
 	sprintf((char*)HttpU_buffer[1].type , "S20");  //URL类型
 	sprintf((char*)HttpU_buffer[1].url, "%s/site/v1/images",BaseUrl);
+	sprintf((char*)HttpU_buffer[1].DestPath, "area2/area2_info.txt");
 	HttpU_buffer[1].HeartTime = DefineHeartTime;
 	HttpU_buffer[1].sent = make_http_get;
 	
-//初始化默认ADS
+//初始化时间服务器
 	HttpU_buffer[2].SW_state = SW_ON;  //使用
 	HttpU_buffer[2].NetState  = NET_OFF_DONE;  //挂起任务
-	sprintf((char*)HttpU_buffer[2].type , "S40");  //URL类型
-	sprintf((char*)HttpU_buffer[2].url, "%s/appsite/v1/get_version",BaseUrl);
-	sprintf((char*)HttpU_buffer[2].DestPath, "{\r\n\"version\": \"0\",\r\n\"type\": \"9\",\r\n\"province\": \"1\",\r\n\"terminal\": \"%s\"\r\n}",device.Toolname);
+	sprintf((char*)HttpU_buffer[2].type , "S30");  //URL类型
+	sprintf((char*)HttpU_buffer[2].url, "%s/site/v1/ads/ids",BaseUrl);
+	sprintf((char*)HttpU_buffer[2].DestPath, "area3/area3_info.txt");
 	HttpU_buffer[2].HeartTime = DefineHeartTime;
-	HttpU_buffer[2].sent = make_http_post;
+	HttpU_buffer[2].sent = make_http_get;
 	
-//初始化默认IDS
+//初始化默认ADS
 	HttpU_buffer[3].SW_state = SW_ON;  //使用
 	HttpU_buffer[3].NetState  = NET_OFF_DONE;  //挂起任务
-	sprintf((char*)HttpU_buffer[3].type , "S41");  //URL类型
-	sprintf((char*)HttpU_buffer[3].url, "%s/site/v1/ads/ids",BaseUrl);
+	sprintf((char*)HttpU_buffer[3].type , "S40");  //URL类型
+	sprintf((char*)HttpU_buffer[3].url, "%s/appsite/v1/get_version",BaseUrl);
+	strcat((char*)HttpU_buffer[3].url, ",POST{\r\n\"version\": \"0\",\r\n\"type\": \"9\",\r\n\"province\": \"1\",\r\n\"terminal\": \"");
+	strcat((char*)HttpU_buffer[3].url, (char*)device.Toolname);
+	strcat((char*)HttpU_buffer[3].url, "\"\r\n}");
+	sprintf((char*)HttpU_buffer[3].DestPath, "area4/area4_info.txt");
 	HttpU_buffer[3].HeartTime = DefineHeartTime;
-	HttpU_buffer[3].sent = make_http_get;
+	HttpU_buffer[3].sent = make_http_post;
 	
 //初始化默认VERSION
 	HttpU_buffer[4].SW_state = SW_ON;  //使用
@@ -1684,6 +1627,7 @@ void make_http_mess(void)
 	strcat((char*)HttpU_buffer[4].url, (char*)device.Toolname);
 	strcat((char*)HttpU_buffer[4].url, "&currentVersion=");
 	strcat((char*)HttpU_buffer[4].url, (char*)device.Version);
+	sprintf((char*)HttpU_buffer[4].DestPath, "area5/area5_info.txt");
 	HttpU_buffer[4].HeartTime = DefineHeartTime;
 	HttpU_buffer[4].sent = make_http_get;
 	
@@ -2332,7 +2276,7 @@ err_t http_url_select(struct http_msee *HttpM)
 	unsigned  int i,j;
 	struct http_url *HttpU;
 	unsigned  char *key_piont;
-	unsigned  char temp;
+//	unsigned  char temp;
 	unsigned char *LocalPoint;
 //	unsigned int LocalPointSize;
 	
@@ -2352,9 +2296,21 @@ err_t http_url_select(struct http_msee *HttpM)
 					{
 						HttpU->LastRxTime = time_sys;
 						if(wr_err==ERR_OK)  //无更新
-						{				wr_err = do_area1_get(&temp);			}
+						{
+							wr_err = do_area1_get((unsigned char*)"area1/area1_info.get");			
+						}
 						if(wr_err==ERR_OK)	//无更新
-						{				wr_err = do_area2_get(&temp);			}
+						{				   
+							wr_err = do_area1_get((unsigned char*)"area2/area2_info.get");			
+						}
+						if(wr_err==ERR_OK)	//无更新
+						{				   
+							wr_err = do_area1_get((unsigned char*)"area4/area4_info.get");			
+						}
+						if(wr_err==ERR_OK)	//无更新
+						{				   
+							wr_err = do_area1_get((unsigned char*)"area5/area5_info.get");			
+						}
 						if(wr_err!=ERR_OK)	//有更新
 						{
 							HttpU->NetState=NET_OFF_DONE;
@@ -2475,7 +2431,14 @@ err_t make_area1_get(unsigned  char *buffer)
 //	u16 j;
 	u16 u16temp;
 	u16 len;
+	u32 fnum1;
+//	u32 fnum2;
 	unsigned  char port_n =0;
+//	unsigned char *LocalPoint;
+//	unsigned int LocalPointSize;
+	
+//	LocalPoint = data_b;
+//	LocalPointSize = sizeof(data_b);
 		res_sd = f_open(&fsrc, "area1/area1_info.txt", FA_OPEN_EXISTING | FA_READ); 	
 		if(res_sd != FR_OK)
 		{
@@ -2488,8 +2451,9 @@ err_t make_area1_get(unsigned  char *buffer)
 		for(FatFile_URL.FileHandleLen=0;FatFile_URL.FileHandleLen <fsrc.fsize;)
 		{
 //			res_sd = f_read (FIL* fp, void* buff, UINT btr, UINT* br);
-			res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum);
-			
+			res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum1);
+				if(FatFile_URL.FileBufSize > fnum1)
+				{					FatFile_URL.FileBuf[fnum1]=0;				}			
 			i=0;
 			while(1)
 			{
@@ -2505,8 +2469,8 @@ err_t make_area1_get(unsigned  char *buffer)
 						strcat((char*)FatFile_URL.FileBufSlave,"[\"name\":\""); 		
 						strcat((char*)FatFile_URL.FileBufSlave,(char*)FatFile_URL.FileHead); 		
 						strcat((char*)FatFile_URL.FileBufSlave,"\","); 							
-						strcat((char*)FatFile_URL.FileBufSlave,"\"handle\":\"0\","); 		
-						strcat((char*)FatFile_URL.FileBufSlave,"\"G10\""); 		
+						strcat((char*)FatFile_URL.FileBufSlave,"\"handle\":\"0\",\"type\":\"G10\","); 								
+						strcat((char*)FatFile_URL.FileBufSlave,"\"url\""); 		
 						strcat((char*)FatFile_URL.FileBufSlave,(char*)FatFile_URL.FileSourcePath); 		
 						strcat((char*)FatFile_URL.FileBufSlave,",]\r\n"); 												
 						res_sd=f_write(&fnew,FatFile_URL.FileBufSlave,strlen((char*)FatFile_URL.FileBufSlave),&fnum);		
@@ -2544,11 +2508,10 @@ err_t make_area1_get(unsigned  char *buffer)
 					i += len; 						
 					strcat((char*)FatFile_URL.FileBufSlave,"[\"name\":\""); 		
 					strcat((char*)FatFile_URL.FileBufSlave,(char*)FatFile_URL.FileHead); 		
-					strcat((char*)FatFile_URL.FileBufSlave,"\","); 		
-					strcat((char*)FatFile_URL.FileBufSlave,"\"handle\":\"0\","); 								
-					strcat((char*)FatFile_URL.FileBufSlave,"\"K10\":\""); 		//SOCKET 类型
+						strcat((char*)FatFile_URL.FileBufSlave,":"); 		
 					strcat((char*)FatFile_URL.FileBufSlave,(char*)FatFile_URL.FileSourcePath); 		
-					strcat((char*)FatFile_URL.FileBufSlave,"\",]\r\n"); 												
+					strcat((char*)FatFile_URL.FileBufSlave,"\","); 		
+					strcat((char*)FatFile_URL.FileBufSlave,"\"handle\":\"0\",\"type\":\"K10\",]\r\n");  //SOCKET 类型								
 					res_sd=f_write(&fnew,FatFile_URL.FileBufSlave,strlen((char*)FatFile_URL.FileBufSlave),&fnum);		
 						
 					sprintf((char*)ChargeM_init.DnsNameStr,"%s",(char*)FatFile_URL.FileHead);
@@ -2569,7 +2532,7 @@ err_t make_area1_get(unsigned  char *buffer)
 				}
 			}		
 					
-			if(FatFile_URL.FileBufSize > fnum)
+			if(FatFile_URL.FileBufSize > fnum1)
 			{
 				break;
 			}			
@@ -2604,6 +2567,8 @@ err_t make_area2_get(unsigned  char *buffer)
 			{
 				res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum1);
 				res_sd = f_read (&fnew, FatFile_URL.FileBufSlave, FatFile_URL.FileBufSlaveSize, &fnum2);
+				if(FatFile_URL.FileBufSize > fnum1)
+				{					FatFile_URL.FileBuf[fnum1]=0;				}			
 				i=0;
 				while(1)
 				{
@@ -2641,7 +2606,9 @@ err_t make_area2_get(unsigned  char *buffer)
 			res_sd = f_lseek(&fsrc, 0);
 			for(FatFile_URL.FileHandleLen=0;FatFile_URL.FileHandleLen <fsrc.fsize;)
 			{
-				res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum);
+				res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum1);
+				if(FatFile_URL.FileBufSize > fnum1)
+				{					FatFile_URL.FileBuf[fnum1]=0;				}			
 				i=0;
 				while(1)
 				{
@@ -2650,20 +2617,19 @@ err_t make_area2_get(unsigned  char *buffer)
 					if(strlen((char*)FatFile_URL.FileHead))
 					{
 						i += len; 
-						strcat((char*)FatFile_URL.FileBufSlave,"[\"handle\":\"0\","); 		
-						
-						strcat((char*)FatFile_URL.FileBufSlave,"\"G20\":\"http:"); 		
+						strcat((char*)FatFile_URL.FileBufSlave,"[\"handle\":\"0\",\"type\":\"G20\","); 								
+						strcat((char*)FatFile_URL.FileBufSlave,"\"url\":\"http:"); 		
 						strcat((char*)FatFile_URL.FileBufSlave,(char*)FatFile_URL.FileHead); 		
 						strcat((char*)FatFile_URL.FileBufSlave,"bmp\",]\r\n"); 		
 
-						res_sd=f_write(&fnew,FatFile_URL.FileBufSlave,strlen((char*)FatFile_URL.FileBufSlave),&fnum);						
+						res_sd=f_write(&fnew,FatFile_URL.FileBufSlave,strlen((char*)FatFile_URL.FileBufSlave),&fnum2);						
 					}
 					else
 					{
 						break;
 					}
 				}
-				if(FatFile_URL.FileBufSize > fnum)
+				if(FatFile_URL.FileBufSize > fnum1)
 				{
 					break;
 				}			
@@ -2674,6 +2640,227 @@ err_t make_area2_get(unsigned  char *buffer)
 
 		return wr_err;		
 }
+//
+err_t make_area4_get(unsigned  char *buffer)
+{
+//	http://wctestapi.freechargechina.com:8888
+  err_t wr_err = ERR_OK;
+	u16 i;
+	u16 len;
+	u16 u16temp;
+	u32 fnum1;
+	u32 fnum2;
+	unsigned char *LocalPoint;
+	unsigned int LocalPointSize;
+	
+	LocalPoint = data_b;
+	LocalPointSize = sizeof(data_b);
+		res_sd = f_open(&fsrc, "area4/area4_info.txt", FA_OPEN_EXISTING | FA_READ); 	
+		if(res_sd != FR_OK)
+		{
+			return res_sd;
+		}		
+		FatFile_URL.FileBuf = str_buffer;		
+		FatFile_URL.FileBufSize  = sizeof(str_buffer);		
+		FatFile_URL.FileBufLen  = 0;		
+		wr_err = ERR_OK;
+		res_sd = f_open(&fnew, "area4/area4_info.get", FA_OPEN_EXISTING | FA_READ); 
+		if(res_sd == FR_OK)
+		{
+			for(FatFile_URL.FileHandleLen=0;FatFile_URL.FileHandleLen <fsrc.fsize;)
+			{
+				res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum1);
+				res_sd = f_read (&fnew, FatFile_URL.FileBufSlave, FatFile_URL.FileBufSlaveSize, &fnum2);
+				if(FatFile_URL.FileBufSize > fnum1)
+				{					FatFile_URL.FileBuf[fnum1]=0;				}			
+				i=0;
+				while(1)
+				{
+					len = cut_between_strs(&FatFile_URL.FileBuf[i],(unsigned  char*)"\"appId\":",(unsigned  char*)",", FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);
+					if(strlen((char*)FatFile_URL.FileHead))
+					{
+						i += len; 
+						sprintf((char*)FatFile_URL.FileDestPath,"\"name\":\"%s\"",(char*)FatFile_URL.FileHead);
+						len = cut_between_strs(FatFile_URL.FileBufSlave,(unsigned  char*)FatFile_URL.FileDestPath, (unsigned  char*)"http",FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);
+						if((strlen((char*)FatFile_URL.FileSourcePath))==0)
+						{
+							wr_err = ERR_VAL;
+							break;
+						}
+					}
+					else
+					{
+						break;
+					}
+				}
+				if(FatFile_URL.FileBufSize > fnum1)
+				{
+					break;
+				}			
+			}
+		}
+		else
+		{
+			wr_err = ERR_VAL;
+		}
+		res_sd=f_close(&fnew);	
+		
+		if(wr_err == ERR_VAL)
+		{
+			res_sd = f_open(&fnew, "area4/area4_info.get", FA_CREATE_ALWAYS | FA_WRITE);
+			res_sd = f_lseek(&fsrc, 0);
+			for(FatFile_URL.FileHandleLen=0;FatFile_URL.FileHandleLen <fsrc.fsize;)
+			{
+				res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum1);
+				if(FatFile_URL.FileBufSize > fnum1)
+				{					FatFile_URL.FileBuf[fnum1]=0;				}			
+				i=0;
+				while(1)
+				{
+					FatFile_URL.FileBufSlave[0] = 0;
+					len = cut_between_strs(&FatFile_URL.FileBuf[i],(unsigned  char*)"{",(unsigned  char*)"}", LocalPoint,LocalPointSize,&u16temp);
+					if(strlen((char*)LocalPoint))
+					{
+						i += len; 
+						len = cut_between_strs(LocalPoint,(unsigned  char*)"\"http",(unsigned  char*)"bmp\"", FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);
+						if(strlen((char*)FatFile_URL.FileHead))
+						{
+							len = cut_between_strs(LocalPoint,(unsigned  char*)"\"appId\":",(unsigned  char*)",", FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);
+							sprintf((char*)FatFile_URL.FileBufSlave,"[\"name\":\"%s\",",(char*)FatFile_URL.FileSourcePath);
+							
+							len = cut_between_strs(FatFile_URL.FileHead,(unsigned  char*)"//",(unsigned  char*)"/", FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);
+							len = cut_between_strs(FatFile_URL.FileSourcePath,(unsigned  char*)":",(unsigned  char*)"\0", FatFile_URL.FileDestPath,sizeof(FatFile_URL.FileDestPath),&u16temp);
+							len = atoi((char*)FatFile_URL.FileDestPath);
+							if(len==0)
+							{
+								len = cut_between_strs(FatFile_URL.FileHead,(unsigned  char*)FatFile_URL.FileSourcePath,(unsigned  char*)"\0", FatFile_URL.FileDestPath,sizeof(FatFile_URL.FileDestPath),&u16temp);
+								sprintf((char*)FatFile_URL.FileHead,"://%s:80%s",(char*)FatFile_URL.FileSourcePath,FatFile_URL.FileDestPath);
+							}
+							strcat((char*)FatFile_URL.FileBufSlave,"\"handle\":\"0\",\"type\":\"G40\","); 								
+							strcat((char*)FatFile_URL.FileBufSlave,"\"url\":\"http"); 		
+							strcat((char*)FatFile_URL.FileBufSlave,(char*)FatFile_URL.FileHead); 		
+							strcat((char*)FatFile_URL.FileBufSlave,"bmp\",]\r\n"); 		
+
+							res_sd=f_write(&fnew,FatFile_URL.FileBufSlave,strlen((char*)FatFile_URL.FileBufSlave),&fnum2);												
+						}
+					}
+					else
+					{
+						break;
+					}
+				}
+				if(FatFile_URL.FileBufSize > fnum1)
+				{
+					break;
+				}			
+			}
+			res_sd=f_close(&fnew);					
+		}
+		res_sd=f_close(&fsrc);			
+
+		return wr_err;		
+}
+//---------------------------------------
+err_t make_area5_get(unsigned  char *buffer)
+{
+//	http://wctestapi.freechargechina.com:8888
+  err_t wr_err = ERR_OK;
+	u16 i;
+	u16 len;
+	u16 u16temp;
+	u32 fnum1;
+	u32 fnum2;
+	
+		res_sd = f_open(&fsrc, "area5/area5_info.txt", FA_OPEN_EXISTING | FA_READ); 	
+		if(res_sd != FR_OK)
+		{
+			return res_sd;
+		}		
+		FatFile_URL.FileBuf = str_buffer;		
+		FatFile_URL.FileBufSize  = sizeof(str_buffer);		
+		FatFile_URL.FileBufLen  = 0;		
+		wr_err = ERR_OK;
+		res_sd = f_open(&fnew, "area5/area5_info.get", FA_OPEN_EXISTING | FA_READ); 
+		if(res_sd == FR_OK)
+		{
+			for(FatFile_URL.FileHandleLen=0;FatFile_URL.FileHandleLen <fsrc.fsize;)
+			{
+				res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum1);
+				res_sd = f_read (&fnew, FatFile_URL.FileBufSlave, FatFile_URL.FileBufSlaveSize, &fnum2);
+				i=0;
+				if(FatFile_URL.FileBufSize > fnum1)
+					{					FatFile_URL.FileBuf[fnum1]=0;				}			
+				while(1)
+				{
+					len = cut_between_strs(&FatFile_URL.FileBuf[i],(unsigned  char*)"\"http",(unsigned  char*)"\"", FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);
+					if(strlen((char*)FatFile_URL.FileHead))
+					{
+						i += len; 
+						len = cut_between_strs(FatFile_URL.FileBufSlave,(unsigned  char*)FatFile_URL.FileHead, (unsigned  char*)"\"",FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);
+						if((strlen((char*)FatFile_URL.FileSourcePath))==0)
+						{
+							wr_err = ERR_VAL;
+							break;
+						}
+					}
+					else
+					{
+						break;
+					}
+				}
+				if(FatFile_URL.FileBufSize > fnum1)
+				{
+					break;
+				}			
+			}
+		}
+		else
+		{
+			wr_err = ERR_VAL;
+		}
+		res_sd=f_close(&fnew);	
+		
+		if(wr_err == ERR_VAL)
+		{
+			res_sd = f_open(&fnew, "area5/area5_info.get", FA_CREATE_ALWAYS | FA_WRITE);
+			res_sd = f_lseek(&fsrc, 0);
+			for(FatFile_URL.FileHandleLen=0;FatFile_URL.FileHandleLen <fsrc.fsize;)
+			{
+				res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum1);
+				if(FatFile_URL.FileBufSize > fnum1)
+				{					FatFile_URL.FileBuf[fnum1]=0;				}			
+				i=0;
+				while(1)
+				{
+					FatFile_URL.FileBufSlave[0] = 0;
+					len = cut_between_strs(&FatFile_URL.FileBuf[i],(unsigned  char*)"\"http",(unsigned  char*)"\"", FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);
+					if(strlen((char*)FatFile_URL.FileHead))
+					{
+						i += len; 
+						strcat((char*)FatFile_URL.FileBufSlave,"[\"handle\":\"0\",\"type\":\"G50\","); 								
+						strcat((char*)FatFile_URL.FileBufSlave,"\"url\":\"http"); 		
+						strcat((char*)FatFile_URL.FileBufSlave,(char*)FatFile_URL.FileHead); 		
+						strcat((char*)FatFile_URL.FileBufSlave,"\",]\r\n"); 		
+
+						res_sd=f_write(&fnew,FatFile_URL.FileBufSlave,strlen((char*)FatFile_URL.FileBufSlave),&fnum2);						
+					}
+					else
+					{
+						break;
+					}
+				}
+				if(FatFile_URL.FileBufSize > fnum1)
+				{
+					break;
+				}			
+			}
+			res_sd=f_close(&fnew);					
+		}
+		res_sd=f_close(&fsrc);			
+
+		return wr_err;		
+}
+
 //ret=0,无更新；ret=1,有更新。flag=0,无溢出；flag=1,有溢出。
 err_t do_area1_get(unsigned  char *buffer)
 {
@@ -2681,13 +2868,15 @@ err_t do_area1_get(unsigned  char *buffer)
 	u16 i,j;
 	u16 len;
 	u16 u16temp;
+	u32 fnum1;
+//	u32 fnum2;
 	struct http_url *HttpU;	
   err_t wr_err;   //1,有更新
 	HttpU = HttpU_buffer;
 	 
 		*buffer = ERR_OK;
 		wr_err = ERR_OK;
-		res_sd = f_open(&fsrc, "area1/area1_info.get", FA_OPEN_EXISTING | FA_READ); 	
+		res_sd = f_open(&fsrc, (char*)buffer, FA_OPEN_EXISTING | FA_READ); 	
 		if(res_sd != FR_OK)
 		{			return res_sd;		}		
 		FatFile_URL.FileBuf = str_buffer;		
@@ -2695,9 +2884,9 @@ err_t do_area1_get(unsigned  char *buffer)
 		FatFile_URL.FileBufLen  = 0;		
 		for(FatFile_URL.FileHandleLen=0;FatFile_URL.FileHandleLen <fsrc.fsize;)
 		{
-			res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum);
+			res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum1);
 			i=0;
-			while(1)
+			while(i<fnum1)
 			{
 				FatFile_URL.FileBufSlave[0] = 0;
 				len = cut_between_strs(&FatFile_URL.FileBuf[i],(unsigned  char*)"[",(unsigned  char*)"]", FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);
@@ -2707,96 +2896,7 @@ err_t do_area1_get(unsigned  char *buffer)
 					len = cut_between_strs(FatFile_URL.FileHead,(unsigned  char*)"\"handle\":\"",(unsigned  char*)"\",", FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);					
 					if(FatFile_URL.FileSourcePath[0]!='T')
 					{
-						len = cut_between_strs(FatFile_URL.FileHead,(unsigned  char*)"\"G10\":\"",(unsigned  char*)"\",", FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);		
-						if(strlen((char*)FatFile_URL.FileSourcePath))
-						{
-							wr_err = ERR_ISCONN; 
-							j=0;
-							while(j<HttpU_BUFSIZE)   //现有的BUFFER有没有连接
-							{ 
-								if(strcmp((char *)FatFile_URL.FileHead, (char *)HttpU->url) == 0)
-								{	break;	}
-								j++;
-								HttpU = HttpU->next;
-							}
-							if(j==HttpU_BUFSIZE)    
-							{
-								j=0;
-								while(HttpU->SW_state != SW_NULL)//现有的BUFFER有没空间
-								{
-									if(j>HttpU_BUFSIZE)
-									{	break;	}
-									j++;
-									HttpU = HttpU->next;
-								}
-								if(HttpU->SW_state==SW_NULL)   
-								{	
-								//初始化新增的URL
-									HttpU->SW_state = SW_ON;  //使用
-									HttpU->NetState  = NET_ON;  //NET工作开启
-									HttpU->HeartTime = DefineHeartTime;
-									HttpU->sent = 	make_http_get;	
-									sprintf((char*)HttpU->type, "G10");
-									sprintf((char*)HttpU->url,"%s",(char*)FatFile_URL.FileSourcePath);
-									temp = 0;
-									cut_between_strs_inverted((unsigned  char*)HttpU->url,(unsigned  char*)"/",&temp, FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);
-									sprintf((char*)HttpU->DestPath,"area1/%s",(char*)FatFile_URL.FileSourcePath);
-								}
-								else
-								{
-									*buffer = (char)ERR_VAL;
-									break;  
-								}	
-							}
-						}
-					}
-				}
-				else
-				{
-					break;
-				}
-			}
-			if(FatFile_URL.FileBufSize > fnum)
-			{
-				break;
-			}			
-		}
-		res_sd=f_close(&fsrc);				
-	return wr_err;
-}
-err_t do_area2_get(unsigned  char *buffer)
-{
-	unsigned  char temp;
-	u16 i,j;
-	u16 len;
-	u16 u16temp;
-	struct http_url *HttpU;	
-  err_t wr_err;   //1,有更新
-	HttpU = HttpU_buffer;
-	 
-		*buffer = ERR_OK;
-		wr_err = ERR_OK;
-		res_sd = f_open(&fsrc, "area2/area2_info.get", FA_OPEN_EXISTING | FA_READ); 	
-		if(res_sd != FR_OK)
-		{			return res_sd;		}		
-		FatFile_URL.FileBuf = str_buffer;		
-		FatFile_URL.FileBufSize  = sizeof(str_buffer);		
-		FatFile_URL.FileBufLen  = 0;		
-		for(FatFile_URL.FileHandleLen=0;FatFile_URL.FileHandleLen <fsrc.fsize;)
-		{
-			res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum);
-			i=0;
-			while(1)
-			{
-				FatFile_URL.FileBufSlave[0] = 0;
-				len = cut_between_strs(&FatFile_URL.FileBuf[i],(unsigned  char*)"[",(unsigned  char*)"]", FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);
-				if(strlen((char*)FatFile_URL.FileHead))
-				{
-					i += len; 
-					len = cut_between_strs(FatFile_URL.FileHead,(unsigned  char*)"\"handle\":\"",(unsigned  char*)"\",", FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);					
-					if(FatFile_URL.FileSourcePath[0]!='T')
-					{
-						len = cut_between_strs(FatFile_URL.FileHead,(unsigned  char*)"\"G20\":\"",(unsigned  char*)"\",", FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);		
+						len = cut_between_strs(FatFile_URL.FileHead,(unsigned  char*)"\"url\":\"",(unsigned  char*)"\",", FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);		
 						if(strlen((char*)FatFile_URL.FileSourcePath))
 						{
 							wr_err = ERR_ISCONN; 
@@ -2825,11 +2925,13 @@ err_t do_area2_get(unsigned  char *buffer)
 									HttpU->NetState  = NET_ON;  //NET工作开启
 									HttpU->HeartTime = DefineHeartTime;
 									HttpU->sent = 	make_http_get;	
-									sprintf((char*)HttpU->type, "G20");
+									len = cut_between_strs(FatFile_URL.FileHead,(unsigned  char*)"\"type\":\"",(unsigned  char*)"\",", HttpU->type,sizeof(HttpU->type),&u16temp);		
 									sprintf((char*)HttpU->url,"%s",(char*)FatFile_URL.FileSourcePath);
+									sprintf((char*)HttpU->SourcePath,"%s",buffer);
 									temp = 0;
-									cut_between_strs_inverted((unsigned  char*)HttpU->url,(unsigned  char*)"/",&temp, FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);
-									sprintf((char*)HttpU->DestPath,"area2/%s",(char*)FatFile_URL.FileSourcePath);
+									cut_between_strs_inverted((unsigned  char*)HttpU->url,(unsigned  char*)"/",&temp, FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);									
+									cut_between_strs_inverted(buffer,(unsigned  char*)"\0",(unsigned  char*)"/", FatFile_URL.FileDestPath,sizeof(FatFile_URL.FileDestPath),&u16temp);
+									sprintf((char*)HttpU->DestPath,"%s/%s",(char*)FatFile_URL.FileDestPath,FatFile_URL.FileSourcePath);
 								}
 								else
 								{
@@ -2845,7 +2947,7 @@ err_t do_area2_get(unsigned  char *buffer)
 					break;
 				}
 			}
-			if(FatFile_URL.FileBufSize > fnum)
+			if(FatFile_URL.FileBufSize > fnum1)
 			{
 				break;
 			}			
@@ -2853,16 +2955,20 @@ err_t do_area2_get(unsigned  char *buffer)
 		res_sd=f_close(&fsrc);				
 	return wr_err;
 }
+//完成请求
 err_t done_area1_get(unsigned  char *buffer)
 {
 	u16 i,j;
 	u16 len;
+	err_t wr_err;
 	u16 u16temp;
+	u32 fnum1;
+//	u32 fnum2;
 	struct http_url *HttpU;	
-  err_t wr_err = ERR_OK;
+  wr_err = ERR_OK;
 	HttpU = HttpM_init.HttpUrl;
 	
-		res_sd = f_open(&fsrc, "area1/area1_info.get", FA_OPEN_EXISTING |FA_READ |FA_WRITE); 	
+		res_sd = f_open(&fsrc, (char *)buffer, FA_OPEN_EXISTING |FA_READ |FA_WRITE); 	
 		if(res_sd != FR_OK)
 		{			return res_sd;		}		
 		FatFile_URL.FileBuf = str_buffer;		
@@ -2870,10 +2976,10 @@ err_t done_area1_get(unsigned  char *buffer)
 		FatFile_URL.FileBufLen  = 0;		
 		for(FatFile_URL.FileHandleLen=0;FatFile_URL.FileHandleLen <fsrc.fsize;)
 		{
-			res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum);
+			res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum1);
 			i=0;
 			j=0;
-			while(1)
+			while(i<fnum1)
 			{
 				FatFile_URL.FileBufSlave[0] = 0;
 				len = cut_between_strs(&FatFile_URL.FileBuf[i],(unsigned  char*)"[" ,(unsigned  char*)"]" ,FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);
@@ -2895,7 +3001,7 @@ err_t done_area1_get(unsigned  char *buffer)
 					break;
 				}
 			}
-			if(FatFile_URL.FileBufSize > fnum)
+			if(FatFile_URL.FileBufSize > fnum1)
 			{
 				break;
 			}			
@@ -2903,16 +3009,79 @@ err_t done_area1_get(unsigned  char *buffer)
 		res_sd=f_close(&fsrc);				
 	return wr_err;
 }
-err_t done_area2_get(unsigned  char *buffer)
+//------获取广告数
+err_t get_AD_number(unsigned  char *buffer)
 {
-	u16 i,j;
+	u16 i;
+//	u16 j;
 	u16 len;
 	u16 u16temp;
-	struct http_url *HttpU;	
-  err_t wr_err = ERR_OK;
-	HttpU = HttpM_init.HttpUrl;
+	u32 fnum1;
+//	u32 fnum2;
+  err_t wr_err;   //1,有更新
+	 
+		*buffer = ERR_OK;
+		wr_err = ERR_OK;
+		res_sd = f_open(&fsrc, (char*)buffer, FA_OPEN_EXISTING | FA_READ); 	
+		if(res_sd != FR_OK)
+		{			return res_sd;		}		
+		FatFile_URL.FileBuf = str_buffer;		
+		FatFile_URL.FileBufSize  = sizeof(str_buffer);		
+		FatFile_URL.FileBufLen  = 0;		
+		LCDC.ADNum = 0;
+		for(FatFile_URL.FileHandleLen=0;FatFile_URL.FileHandleLen <fsrc.fsize;)
+		{
+			res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum1);
+			i=0;
+			while(i<fnum1)
+			{
+				FatFile_URL.FileBufSlave[0] = 0;
+				len = cut_between_strs(&FatFile_URL.FileBuf[i],(unsigned  char*)"[",(unsigned  char*)"]", FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);
+				if(strlen((char*)FatFile_URL.FileHead))
+				{
+					i += len; 
+					len = cut_between_strs(FatFile_URL.FileHead,(unsigned  char*)"\"handle\":\"",(unsigned  char*)"\",", FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);					
+					if(FatFile_URL.FileSourcePath[0]=='T')
+					{
+						len = cut_between_strs(FatFile_URL.FileHead,(unsigned  char*)"\"name\":\"",(unsigned  char*)"\",", LCDC.AD[LCDC.ADNum].name,sizeof(LCDC.AD[0].name),&u16temp);		
+						LCDC.AD[LCDC.ADNum].count = 0;
+						LCDC.ADNum++;
+						if(LCDC.ADNum>=MAX_AD_NUMBER)
+						{
+							wr_err = ERR_ISCONN; 
+							break;
+						}
+					}
+				}
+				else
+				{
+					break;
+				}
+			}
+			if((FatFile_URL.FileBufSize > fnum1)||(LCDC.ADNum>=MAX_AD_NUMBER))
+			{
+				break;
+			}
+		}
+		res_sd=f_close(&fsrc);				
+	return wr_err;
+}
+//------获取广告路径buffer=NAME.
+err_t get_AD_dir(unsigned  char *buffer,unsigned  char *retdir)
+{
+	u16 i;
+//	u16 j;
+	u16 len;
+	u16 u16temp;
+	err_t wr_err;
+	u32 fnum1;
+//	u32 fnum2;
+//	struct http_url *HttpU;	
+//	HttpU = HttpM_init.HttpUrl;
 	
-		res_sd = f_open(&fsrc, "area2/area2_info.get", FA_OPEN_EXISTING |FA_READ |FA_WRITE); 	
+		wr_err= ERR_VAL;
+		retdir[0] = 0;
+		res_sd = f_open(&fsrc, (char*)"area4/area4_info.get", FA_OPEN_EXISTING |FA_READ); 	
 		if(res_sd != FR_OK)
 		{			return res_sd;		}		
 		FatFile_URL.FileBuf = str_buffer;		
@@ -2920,24 +3089,23 @@ err_t done_area2_get(unsigned  char *buffer)
 		FatFile_URL.FileBufLen  = 0;		
 		for(FatFile_URL.FileHandleLen=0;FatFile_URL.FileHandleLen <fsrc.fsize;)
 		{
-			res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum);
+			res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum1);
 			i=0;
-			j=0;
-			while(1)
+			while(i<fnum1)
 			{
 				FatFile_URL.FileBufSlave[0] = 0;
 				len = cut_between_strs(&FatFile_URL.FileBuf[i],(unsigned  char*)"[" ,(unsigned  char*)"]" ,FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);
 				if(strlen((char*)FatFile_URL.FileHead))
 				{
-					j = i+u16temp;
 					i += len; 
-					len = cut_between_strs(FatFile_URL.FileHead,(unsigned  char*)"\"handle\":\"" ,HttpU->url, FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);
-					if(strlen((char*)FatFile_URL.FileSourcePath))
+					len = cut_between_strs(FatFile_URL.FileHead,(unsigned  char*)"\"name\":" ,buffer, FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);
+					if(FatFile_URL.FileSourcePath[0]=='"')
 					{
-						j +=u16temp;
-						res_sd = f_lseek(&fsrc, j);
-						sprintf((char*)FatFile_URL.FileBufSlave, "T");
-						res_sd=f_write(&fsrc,FatFile_URL.FileBufSlave,strlen((char*)FatFile_URL.FileBufSlave),&fnum);											
+						len = cut_between_strs(FatFile_URL.FileHead,(unsigned  char*)"\"url\":\"" ,(unsigned  char*)"\"", FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);
+						len = cut_between_strs_inverted((unsigned  char*)FatFile_URL.FileSourcePath,(unsigned  char*)"/",(unsigned  char*)"\0", FatFile_URL.FileDestPath,sizeof(FatFile_URL.FileDestPath),&u16temp);																
+						sprintf((char*)retdir, "area4/%s",FatFile_URL.FileDestPath);		
+						wr_err= ERR_OK;
+						break;
 					}					
 				}
 				else
@@ -2945,7 +3113,7 @@ err_t done_area2_get(unsigned  char *buffer)
 					break;
 				}
 			}
-			if(FatFile_URL.FileBufSize > fnum)
+			if(FatFile_URL.FileBufSize > fnum1||wr_err== ERR_OK)
 			{
 				break;
 			}			
@@ -2979,9 +3147,9 @@ unsigned short cut_between_strs(unsigned  char *buffer,unsigned  char *began,uns
 				len = strlen((char*)began);
 				if(len ==0)
 				{
-						FlagBegan = 1;
-						PointBegan = 0;		
-						*retpoint = PointBegan;
+					FlagBegan = 1;
+					PointBegan = 0;		
+					*retpoint = PointBegan;
 				}
 				else
 				{
@@ -2998,10 +3166,11 @@ unsigned short cut_between_strs(unsigned  char *buffer,unsigned  char *began,uns
 						FlagBegan = 1;
 						PointBegan = i+j;		
 						*retpoint = PointBegan;
+						i+=j;
 					}
 				}
 			}
-			if(FlagBegan>0)  //有收到长度
+			else if(FlagBegan>0)  //有收到长度
 			{
 				wr_err = ERR_OK;
 				len = strlen((char*)end);
@@ -3160,7 +3329,53 @@ extern unsigned short cut_between_strs_inverted(unsigned  char *buffer,unsigned 
 			return (PointBegan-strlen((char*)began));	
 		}
 }
-
+//
+unsigned short find_strs(unsigned  char *buffer,unsigned  char *began,unsigned short maxret,unsigned short *retpoint)
+{
+	u16 len;
+	u16 i,j;
+	u16 retlen=0;
+	u8 FlagBegan=0;	
+  err_t wr_err = ERR_OK;
+	
+		*retpoint = 0;
+		retlen = 0;
+		len = strlen((char*)began);
+		for(i=0;i<maxret;i++)
+		{
+				if(len ==0)
+				{
+					FlagBegan = 1;
+					*retpoint = 0;
+				}
+				else
+				{
+					wr_err = ERR_OK;
+					for(j=0;j<len;j++)
+					{
+						if(began[j] != buffer[i+j])
+						{
+							wr_err = ERR_VAL;
+							break;
+						}				
+					}
+					if(wr_err == ERR_OK)
+					{
+						FlagBegan = 1;
+						*retpoint = i+len;
+					}
+				}
+				
+				if(FlagBegan>0)  //有收到长度
+				{
+					retlen = maxret - *retpoint;
+					break;
+				}			
+			
+	  }
+		
+		return retlen;	
+}
 //post 初始化注册接口.最开始试的一个命令
 err_t make_http_InitSoket(unsigned  char *buffer)
 {
@@ -3211,7 +3426,7 @@ err_t make_http_InitSoket(unsigned  char *buffer)
 	strcat((char*)buffer,"Referer: "); 		
 	strcat((char*)buffer,(char*)LocalPoint); 		
 	strcat((char*)buffer,"\r\n"); 
-	sprintf((char*)LocalPoint, "User-Agent: %s %s\r\n",(char*)device.Toolname,(char*)device.Version);
+	sprintf((char*)LocalPoint, "User-Agent: %s %s %d\r\n",(char*)device.Toolname,(char*)device.Version,device.province);
 	strcat((char*)buffer,(char*)LocalPoint); 		
 //	strcat((char*)buffer,"Accept-Encoding: gzip, deflate, sdch\r\n"); 		
 //	strcat((char*)buffer,"Accept-Language: zh-CN,zh;q=0.8\r\n"); 		
@@ -3251,23 +3466,19 @@ err_t make_http_post(unsigned  char *buffer)
 	u16 len;
 	unsigned  char *key_piont;
 	unsigned char *LocalPoint;
-//	unsigned int LocalPointSize;
+	unsigned int LocalPointSize;
 	
 	LocalPoint = data_b;	
+	LocalPointSize = sizeof(data_b);
 	buffer[0]=0;
 	strcat((char*)buffer,"POST "); 
 	
-	sprintf((char*)LocalPoint, (char*)HttpM_init.HttpUrl->url);
-	len = strlen((char*)LocalPoint)-1;
-	for(i=sizeof("http://");i<len;i++)
-	{
-		if(LocalPoint[i]=='/')
-		{
-			key_piont =&LocalPoint[i];
-			break;
-		}	
-	}
-	strcat((char*)buffer,(char*)key_piont); 
+//	len = cut_between_strs(HttpM_init.HttpUrl->url, (unsigned char*)"\0",(unsigned char*)",{POST", FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&i);	
+	len = cut_between_strs(HttpM_init.HttpUrl->url, (unsigned char*)"http://",(unsigned char*)",POST", FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&i);	
+	len = cut_between_strs(FatFile_URL.FileSourcePath, (unsigned char*)"/",(unsigned char*)"\0", FatFile_URL.FileDestPath,sizeof(FatFile_URL.FileDestPath),&i);
+	sprintf((char*)LocalPoint, "/%s",FatFile_URL.FileDestPath);
+
+	strcat((char*)buffer,(char*)LocalPoint); 
 	strcat((char*)buffer," HTTP/1.1\r\n"); 
 	strcat((char*)buffer,"Host: "); 
 	strcat((char*)buffer,(char*)HttpM_init.DnsNameStr); 
@@ -3277,19 +3488,10 @@ err_t make_http_post(unsigned  char *buffer)
 	strcat((char*)buffer,"Connection: keep-alive\r\n"); 		
 	strcat((char*)buffer,"Accept: */*\r\n"); 		
 
-	sprintf((char*)LocalPoint, (char*)HttpM_init.HttpUrl->url);
-	len = strlen((char*)LocalPoint)-1;
-	for(i=0;i<len;i++)
-	{
-		if(LocalPoint[len-i]=='/')
-		{
-			LocalPoint[len-i] = 0;
-			break;
-		}	
-	}
-//	strcat((char*)buffer,"Referer: "); 		
-//	strcat((char*)buffer,(char*)LocalPoint); 		
-//	strcat((char*)buffer,"\r\n"); 
+	len = cut_between_strs_inverted(HttpM_init.HttpUrl->url,(unsigned  char*)"\0",(unsigned  char*)"/", LocalPoint,LocalPointSize,&i);
+	strcat((char*)buffer,"Referer: "); 		
+	strcat((char*)buffer,(char*)LocalPoint); 		
+	strcat((char*)buffer,"\r\n"); 
 	sprintf((char*)LocalPoint, "User-Agent: %s %s\r\n",(char*)device.Toolname,(char*)device.Version);
 	strcat((char*)buffer,(char*)LocalPoint); 		
 //	strcat((char*)buffer,"Accept-Encoding: gzip, deflate, sdch\r\n"); 		
@@ -3299,7 +3501,9 @@ err_t make_http_post(unsigned  char *buffer)
 //  sprintf((char*)LocalPoint, "\r\n{\"deviceNo\" : \"SJZ-YZBH01\",\r\n\"portNum\" : 4,\r\n\"retainPorts\" : [10,11,12,13],\r\n\"province\" : 1}");
 //  sprintf((char*)LocalPoint, "{\"deviceNo\" : \"%s\"",ChargeM_init.SN);
 //  sprintf((char*)LocalPoint, "%s,\r\n\"portNum\" : 4,\r\n\"retainPorts\" : [10,11,12,13],\r\n\"province\" : 1}",LocalPoint);
-  sprintf((char*)LocalPoint, "%s",HttpM_init.HttpUrl->DestPath);
+	len = cut_between_strs(HttpM_init.HttpUrl->url, (unsigned char*)"POST{",(unsigned char*)"}", FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&i);
+	sprintf((char*)LocalPoint, "{%s}",FatFile_URL.FileSourcePath);
+
 	body_len=strlen((char*)LocalPoint);  	//字符串长度
 	key_piont = &LocalPoint[body_len+1];
 	u16toStr(body_len,key_piont);			//转10进制字符串
@@ -3410,9 +3614,11 @@ err_t LCD_task(void)
 	if(LCDC.SW_state  == SW_NULL)
 	{
 		LCDC.SW_state = SW_ON;
-		LCDC.Mode = 0;
-		LCDC.SPTimeSet = 30000;
+		LCDC.SPTimeSet = 60000;
+		LCDC.ADTimeSet = 15000;
 	  LCDC.TimeTimerSet =1000;
+		LCDC.TestTimerSet = 600000;
+		LCDC.StateMessageTimerSet = 2000;
 		
 		for(i=0;i<DefPortNum;i++)
 		{
@@ -3421,37 +3627,80 @@ err_t LCD_task(void)
 			{
 				LCDC.LcdNumber[i]=0;  //没有屏
 			}
-		}
-		
+			LCDC.Mode[i] = LCD_MODE0;
+			LCDC.ADID[i] =0; 
+			LCDC.POWEROFFTIME[i] = 9;
+		}		
+		for(i=0;i<MAX_AD_NUMBER;i++)  //广告计数清0
+		{
+			LCDC.AD[i].count =0;
+		}		
+
 		for(i=0;i<DefPortNum;i++)
 		{
 			LCDC.TimeTimer[i] = time_sys;
 			LCDC.SPTime[i] = time_sys;
 			if(LCDC.LcdNumber[i]>0)
 			{
-			sprintf((char*)LocalPoint, "%s:%d",device.Toolname,(LCDC.LcdNumber[i]));
-			tft_DisplayStr(320-16, 0, LocalPoint,BLACK, RED,LCDC.LcdNumber[i]);			
+				tft_Clear(0,0,320,240,BLUE,LCDC.LcdNumber[i]);		
 			}
 		}
 		
 		if(device.SD_state !=FR_OK)
 		{
 			sprintf((char*)LocalPoint, "SD card error:%d",device.SD_state);
-			tft_DisplayStr(0, 0, LocalPoint,BLACK, RED,3);						
+			tft_DisplayStr(0, 40, LocalPoint,BLACK, WHITE,3);						
 		}
 	}
 	else
-	{		
-		if(LCDC.Mode==0)  //正常模式
+	{
+		if(time_sys -LCDC.StateMessageTimer>LCDC.StateMessageTimerSet)
 		{
+			LCDC.StateMessageTimer += LCDC.StateMessageTimerSet;
 			for(i=0;i<DefPortNum;i++)
+			{
+				if(LCDC.LcdNumber[i]>0)
+				{
+					LCD_TEST(LCDC.LcdNumber[i]);
+				}
+			}				
+			State_Message(0,0,LCDC.StateUpColor,LCDC.StateDownColor,LGRAY);
+		}
+		
+		for(i=0;i<DefPortNum;i++)
+		{
+			if((LCDC.Mode[i])==LCD_MODE0)  //初始模式
 			{
 				if(time_sys-LCDC.TimeTimer[i]>LCDC.TimeTimerSet && (LCDC.LcdNumber[i]>0))
 				{			
 					LCDC.TimeTimer[i] +=LCDC.TimeTimerSet;
+					
+					LCDC.SPID[i] = 9;
+					LCDC.SPTime[i]=time_sys-LCDC.SPTimeSet;
+//					LCDC.ADID[i] = 0;
+//					LCDC.ADTime[i] = time_sys;
+					LCDC.TimeTimer[i]=time_sys; 
+					LCDC.POWEROFFTIME[i] = 0;
 					if(device.PortPowerUseTime[i])
 					{
-						if(LCDC.SPID[i]<2)
+						LCDC.Mode[i] = LCD_MODE1;					
+					}
+					else
+					{
+						LCDC.Mode[i] = LCD_MODE2;
+					}
+				}
+			}
+
+			if((LCDC.Mode[i])==LCD_MODE1)  //充电模式
+			{
+				if(time_sys-LCDC.TimeTimer[i]>LCDC.TimeTimerSet && (LCDC.LcdNumber[i]>0))
+				{			
+					LCDC.TimeTimer[i] +=LCDC.TimeTimerSet;
+					if(LCDC.POWEROFFTIME[i]<=5)
+//					if(device.PortPowerUseTime[i]>0)
+					{
+						if(LCDC.SPID[i]!=2)
 						{
 							device.PortPowerUseTime[i]++;
 							LCDC.SPTime[i] = time_sys-LCDC.SPTimeSet;							
@@ -3462,7 +3711,22 @@ err_t LCD_task(void)
 								LCD_TxtBuffer[i][2048]=0;
 								LCD_TxtBuffer[i][2049]=0;
 							}							
-							res_sd = f_close(&fsrc); 	 		
+							res_sd = f_close(&fsrc); 
+							
+							if(FatFile_AD.SW_state == SW_OFF)  //关闭时申请使用
+							{
+								FatFile_AD.SW_state = SW_ON;    //
+								FatFile_AD.NetState = NET_FLASH_ON;
+								LCDC.SPID[i] =2;		
+								FatFile_AD.f_area = 9;
+		//						FatFile_AD.f_unm = LCDC.SPID[i]; 
+								sprintf((char*)FatFile_AD.FileSourcePath, "area2/P%d.bmp",LCDC.SPID[i]);
+								bmp_print_unit(0,0,FatFile_AD,LCDC.LcdNumber[i]);//显示图片单元。		
+								
+								FatFile_AD.SW_state = SW_OFF; //关闭时申请使用
+							}
+							LCDC.ADTime[i] = time_sys;      //广告时间同步
+							LCDC.TimeTimer[i] =time_sys;
 							continue;
 						}
 						if(FatFile_AD.SW_state == SW_OFF)  //关闭时申请使用
@@ -3487,34 +3751,52 @@ err_t LCD_task(void)
 							tft_1bitdeep_TXT (87, 0, LCD_TxtBuffer[i],POINT_COLOR, 0xffff,LCDC.LcdNumber[i]);							
 							FatFile_AD.SW_state = SW_OFF; //关闭时申请使用
 						}
-					}		
+						
+						if(time_sys - LCDC.ADTime[i]>LCDC.ADTimeSet)  //广告播放
+						{
+							LCDC.ADTime[i] += LCDC.ADTimeSet;
+							if(FatFile_AD.SW_state == SW_OFF)  //关闭时申请使用
+							{
+								FatFile_AD.SW_state = SW_ON;    //
+								FatFile_AD.NetState = NET_FLASH_ON;								
+								FatFile_AD.f_area = 9;					
+								get_AD_dir(LCDC.AD[LCDC.ADID[i]].name ,FatFile_AD.FileSourcePath);	
+								res_sd = f_open(&fsrc, (char*)FatFile_AD.FileSourcePath, FA_OPEN_EXISTING | FA_READ); 	 		
+								if(res_sd == FR_OK)
+								{							LCDC.AD[LCDC.ADID[i]].count++;							}		
+								res_sd = f_close(&fsrc); 	 		
+//								sprintf((char*)FatFile_AD.FileSourcePath, "area2/T%d.bmp",(device.PortPowerUseTime[i]%3600/600));
+								bmp_print_unit(116,0,FatFile_AD,LCDC.LcdNumber[i]);//显示图片单元。		
+								
+								FatFile_AD.SW_state = SW_OFF; //关闭时申请使用
+							}
+							LCDC.ADID[i]++;
+							if(LCDC.ADID[i]>=LCDC.ADNum)
+							{								LCDC.ADID[i]=0;							}
+						}												
+					}
+					if(device.PortPowerUseTime[i]==0)
+					{						LCDC.POWEROFFTIME[i]++;						}
+					else
+					{						LCDC.POWEROFFTIME[i]=0;						}
+					if(LCDC.POWEROFFTIME[i]>5)
+					{
+						LCDC.Mode[i] = LCD_MODE0;
+					}
 				}
 			}
-			
-			for(i=0;i<DefPortNum;i++)
+
+			if((LCDC.Mode[i])==LCD_MODE2)  //空闲模式
 			{
 				if(time_sys-LCDC.SPTime[i]>LCDC.SPTimeSet && (LCDC.LcdNumber[i]>0))
 				{			
 					LCDC.SPTime[i] = time_sys;
-					tft_Clear(0,0,320,240,WHITE,LCDC.LcdNumber[i]);		
-
-					if(device.PortPowerUseTime[i])
+					if(device.PortPowerUseTime[i]==0)
 					{
-						if(FatFile_AD.SW_state == SW_OFF)  //关闭时申请使用
-						{
-							FatFile_AD.SW_state = SW_ON;    //
-							FatFile_AD.NetState = NET_FLASH_ON;
-							LCDC.SPID[i] =2;		
-							FatFile_AD.f_area = 9;
-	//						FatFile_AD.f_unm = LCDC.SPID[i]; 
-							sprintf((char*)FatFile_AD.FileSourcePath, "area2/P%d.bmp",LCDC.SPID[i]);
-							bmp_print_unit(0,0,FatFile_AD,LCDC.LcdNumber[i]);//显示图片单元。		
-							
-							FatFile_AD.SW_state = SW_OFF; //关闭时申请使用
-						}
-					}		
-					else
-					{
+						//初始化屏
+						LCD_InitAll();
+						
+						tft_Clear(0,0,320,240,WHITE,LCDC.LcdNumber[i]);		
 						if(FatFile_AD.SW_state == SW_OFF)  //关闭时申请使用
 						{
 							FatFile_AD.SW_state = SW_ON;    //
@@ -3544,13 +3826,15 @@ err_t LCD_task(void)
 							}
 							FatFile_AD.SW_state = SW_OFF; //关闭时申请使用
 						}
-					}		
+					}
 				}
-			}
-		}
-		else if(LCDC.Mode==1)
-		{
-			for(i=0;i<DefPortNum;i++)
+				if(device.PortPowerUseTime[i]>0)
+				{
+					LCDC.Mode[i]=LCD_MODE1;
+				}
+			}	
+			
+			if((LCDC.Mode[i])==LCD_MODE_TEST)  //测试模式
 			{
 				if(time_sys-LCDC.SPTime[i]>LCDC.SPTimeSet && (LCDC.LcdNumber[i]>0))
 				{			
@@ -3572,23 +3856,25 @@ err_t LCD_task(void)
 					sprintf((char*)LocalPoint, "%s:%d",device.Toolname,(LCDC.LcdNumber[i]));
 					tft_DisplayStr(320-16, 0, LocalPoint,BLACK, RED,LCDC.LcdNumber[i]);						
 				}
-			}
-			temp_x =  320-16*2;
-			for(i=0;i<DefPortNum;i++)
-			{
-				if((time_sys-LCDC.TimeTimer[i]>LCDC.TimeTimerSet))
-				{
-					LCDC.TimeTimer[i] += LCDC.TimeTimerSet;
-					sprintf((char*)LocalPoint, "S:%d",device.PortPowerSetTime[i]);
-					tft_DisplayStr(temp_x-32*i, 0, LocalPoint,BLACK, RED,3);
-					sprintf((char*)LocalPoint, "U:%d",device.PortPowerUseTime[i]);
-					tft_DisplayStr(temp_x-32*i-16, 0, LocalPoint,BLACK, RED,3);
-					
-					sprintf((char*)LocalPoint, "KV:%d",(fkey.KeyValue));
-					tft_DisplayStr(320-16, 190, LocalPoint,BLACK, RED,(LCDC.LcdNumber[i]));
-				}
+				
+				temp_x =  320-16*2;
+//				for(i=0;i<DefPortNum;i++)
+//				{
+					if((time_sys-LCDC.TimeTimer[i]>LCDC.TimeTimerSet))
+					{
+						LCDC.TimeTimer[i] += LCDC.TimeTimerSet;
+						sprintf((char*)LocalPoint, "S:%d",device.PortPowerSetTime[i]);
+						tft_DisplayStr(temp_x-32*i, 0, LocalPoint,BLACK, RED,3);
+						sprintf((char*)LocalPoint, "U:%d",device.PortPowerUseTime[i]);
+						tft_DisplayStr(temp_x-32*i-16, 0, LocalPoint,BLACK, RED,3);
+						
+						sprintf((char*)LocalPoint, "KV:%d",(fkey.KeyValue));
+						tft_DisplayStr(320-16, 190, LocalPoint,BLACK, RED,(LCDC.LcdNumber[i]));
+					}
+//				}
 			}
 		}
+		
 	}
 	return ERR_OK;
 }
@@ -3721,7 +4007,7 @@ err_t key_task(void)
 							device.PortPowerUseTime[i] = device.PortPowerSetTime[i];
 						}
 					}
-					else if(fkey.KeyValue==4)    //显示设备信息1
+					else if(fkey.KeyValue==4)    //显示SD设备信息1
 					{
 						
 					}
@@ -3784,20 +4070,19 @@ err_t key_task(void)
 					else if(fkey.KeyValue%10 == 0)  //返回
 					{
 						fkey.KeyValue = 0;
-						LCDC.Mode = 0;					
 						for(i=0;i<DefPortNum;i++)
 						{
-							LCDC.SPTime[i] = time_sys-LCDC.SPTimeSet;
+							LCDC.Mode[i] = LCD_MODE0;					
 						}
 					}
 				}
 				else if(time_sys-fkey.PutInTimer>fkey.AddTimerSet)
 				{
-					if(LCDC.Mode==0)
+					if(LCDC.Mode[0]!=LCD_MODE_TEST)
 					{
-						LCDC.Mode = 1;
 						for(i=0;i<DefPortNum;i++)
 						{
+							LCDC.Mode[i] = LCD_MODE_TEST;
 							LCDC.SPTime[i] = time_sys-LCDC.SPTimeSet;
 						}
 					}
@@ -3816,4 +4101,203 @@ err_t key_task(void)
 	}
 	return ERR_OK;
 }
-
+//-----------------------------------------------
+void LCD_TEST(u8 cs)
+{
+//0xE0 set_pll ;Start the PLL. Before the start, the system was operated with the crystal oscillator or clock input 
+//0xE2  set_pll_mn;  Set the PLL 
+//0xE3  get_pll_mn;  Get the PLL settings 
+//0xE4  get_pll_status;  Get the current PLL status 	
+//	tft_cs_enable(cs);
+//	tft_cs_disable(cs);
+	u8 i;
+	u16 temp;
+	u32 temp1,temp2;
+//	0x0036
+	LCDC.LCDError =0;	
+	if('0'<device.Version[2])
+	{
+			tft_cs_enable(cs);
+			LCD_REG= 0XB7; 
+			i=10;
+			while(i--);
+			temp= LCD_RAM; 
+			temp<<= 8; 
+			temp+= LCD_RAM; 
+			tft_cs_disable(cs);	
+		
+			i=10;
+			while(i--);	
+			tft_cs_enable(cs);	
+			LCD_REG= 0XE3; 
+			i=100;
+			while(i--);
+			temp1= LCD_RAM; 
+			temp1<<= 8; 
+			temp1+= LCD_RAM; 
+			temp1<<= 8; 
+			temp1+= LCD_RAM; 
+			tft_cs_disable(cs);	
+		
+			i=10;
+			while(i--);	
+			tft_cs_enable(cs);
+			LCD_REG= 0XE7; 
+			i=100;
+			while(i--);
+			temp2= LCD_RAM; 
+			temp2<<= 8; 
+			temp2+= LCD_RAM; 
+			temp2<<= 8; 
+			temp2+= LCD_RAM; 
+			tft_cs_disable(cs);	
+//			if((temp!=VT)||(temp1!=0x230204)||(temp2!=0x0293e0))
+			if((temp!=VT)||(temp1!=0x230204)||(temp2!=0x00DB00))
+			{
+				LCDC.LCDError |= cs; 
+				LCD_InitAll();
+				LCDC.TestTimer[0] = time_sys;
+				LCDC.TimeTimer[1] = time_sys;
+				LCDC.SPTime[0] = time_sys-LCDC.SPTimeSet;
+				LCDC.SPTime[1] = time_sys-LCDC.SPTimeSet;
+			}		
+	}
+	if(LCDC.SPID[0]==2)
+	{
+				LCDC.TestTimer[0] = time_sys;
+	}
+	else
+	{
+		if((time_sys - LCDC.TestTimer[0])>(LCDC.TestTimerSet))   //屏保时间的3分之一初始一次
+		{
+//			LCD_InitAll();
+//			LCDC.TestTimer[0] = time_sys;
+//			LCDC.TestTimer[1] = time_sys;
+//			LCDC.SPTime[0] = time_sys-LCDC.SPTimeSet;
+//			LCDC.SPTime[1] = time_sys-LCDC.SPTimeSet;
+		}
+	}
+}
+//状态信息通知栏
+void State_Message(unsigned int x, unsigned int y, u16 UpColor, u16 DownColor,u16 ChargeColor)
+{
+	u8 j,i;
+	u8 StateASCII_size;
+		
+			tft_Clear(2,1,5,6,WHITE,3);
+			tft_Clear(2,1,(LCDC.LCDError%5),1,RED,3);	
+		if((time_sys-time_uart1)>=30000)  //30秒没收串口
+		{
+//			tft_Clear(6,2,((device.addr&0x0f)/5),1,LGRAY,3);
+//			tft_Clear(2,2,((device.addr&0x0f)%5),1,LGRAY,3);
+			tft_Clear(2,3,1,1,LGRAY,3);
+			tft_Clear(2,4,3,1,LGRAY,3);
+			tft_Clear(2,5,5,1,LGRAY,3);
+			tft_Clear(4,6,3,1,LGRAY,3);
+			tft_Clear(2,7,2,1,LGRAY,3);
+		}
+		else
+		{
+//			tft_Clear(6,2,((device.addr&0x0f)/5),1,GREEN,3);
+//			tft_Clear(2,2,((device.addr&0x0f)%5),1,GREEN,3);
+			tft_Clear(2,3,1,1,GREEN,3);
+			tft_Clear(2,4,3,1,GREEN,3);
+			tft_Clear(2,5,5,1,GREEN,3);
+			tft_Clear(4,6,3,1,GREEN,3);
+			tft_Clear(2,7,2,1,GREEN,3);
+		}
+//上行	
+		if(UpColor!=NULL)
+		{
+			tft_Clear(0,12,5,1,UpColor,3);
+			tft_Clear(5,10,1,5,UpColor,3);
+			tft_Clear(6,11,1,3,UpColor,3);
+			tft_Clear(7,12,1,1,UpColor,3);	
+		}			
+//下行		
+		if(DownColor!=NULL)
+		{
+			tft_Clear(3,19,5,1,DownColor,3);
+			tft_Clear(2,17,1,5,DownColor,3);
+			tft_Clear(1,18,1,3,DownColor,3);
+			tft_Clear(0,19,1,1,DownColor,3);		
+		}
+//充电	
+	 if(ADC_BUFFER[20]>(ADC_Base0[6]+ADC_LINE2))
+		{
+			ChargeColor = GREEN;
+		}
+		else
+		{
+			ChargeColor = LGRAY;
+		}			
+		tft_Clear(0,26,1,1,ChargeColor,1);
+		tft_Clear(1,26,1,2,ChargeColor,1);
+		tft_Clear(2,26,1,3,ChargeColor,1);
+		tft_Clear(3,26,1,4,ChargeColor,1);
+		tft_Clear(4,23,1,4,ChargeColor,1);
+		tft_Clear(5,24,1,3,ChargeColor,1);
+		tft_Clear(6,25,1,2,ChargeColor,1);
+		tft_Clear(7,26,1,1,ChargeColor,1);	
+		
+	 if(ADC_BUFFER[23]>(ADC_Base0[7]+ADC_LINE2))
+		{
+			ChargeColor = GREEN;
+		}
+		else
+		{
+			ChargeColor = LGRAY;
+		}
+		tft_Clear(0,26,1,1,ChargeColor,2);
+		tft_Clear(1,26,1,2,ChargeColor,2);
+		tft_Clear(2,26,1,3,ChargeColor,2);
+		tft_Clear(3,26,1,4,ChargeColor,2);
+		tft_Clear(4,23,1,4,ChargeColor,2);
+		tft_Clear(5,24,1,3,ChargeColor,2);
+		tft_Clear(6,25,1,2,ChargeColor,2);		
+		tft_Clear(7,26,1,1,ChargeColor,2);	
+		
+//charge 启动指示	
+//		if(device.ChargeStatusSW==1)
+//		{
+//			device.ChargeStatusSW = 0;
+//			if(time_sys-device.ChargeStatusTimer <600000)  //标志显示10分钟
+//			{
+//				device.ChargeStatusSW = 1;
+//				UART_BUFFER[0] = device.ChargeStatus;
+//				UART_BUFFER[1] = 0;
+//				tft_DisplayStr(0, 230, UART_BUFFER,POINT_COLOR, BACK_COLOR,3);
+//			}
+//		}
+		StateASCII_size =0;
+//充电端口		
+		i=0;
+		UART_BUFFER[i++] ='1';  //代表1号屏
+		UART_BUFFER[i++] =':';  //
+		for(j=0;j<3;j++)
+		{
+			UART_BUFFER[i++] = Dport_State[j]+'0';
+		}
+		UART_BUFFER[i++] =0;
+		if(info2STR.item3_data[0]==0x01)
+		{
+		tft_DisplayStr(0, 7*5+8*StateASCII_size, UART_BUFFER,POINT_COLOR, BACK_COLOR,1);
+		}
+		
+		i=0;
+		UART_BUFFER[i++] ='2';  //代表2号屏
+		UART_BUFFER[i++] =':';  //
+		for(j=0;j<3;j++)
+		{
+			UART_BUFFER[i++] = Dport_State[3+j]+'0';
+		}
+		UART_BUFFER[i++] =0;
+	if(info2STR.item3_data[0]==0x01)
+		{
+		tft_DisplayStr(0, 7*5+8*StateASCII_size, UART_BUFFER,POINT_COLOR, BACK_COLOR,2);
+		}
+		
+		StateASCII_size	+= sizeof(UART_BUFFER);	
+		LCDC.StateUpColor = LGRAY;
+		LCDC.StateDownColor = LGRAY;
+}

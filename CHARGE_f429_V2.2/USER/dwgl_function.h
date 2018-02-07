@@ -63,7 +63,8 @@ extern void File_Erase(u8 FN);
 extern void Flash_Erase(unsigned int addr,unsigned int size);
 extern void RGB888_565(unsigned int addr);
 
-extern void LCD_TEST(void);
+extern void LCD_TEST(u8 cs);
+extern void State_Message(unsigned int x, unsigned int y, u16 UpColor, u16 DownColor,u16 ChargeColor);
 
 extern u8 Frame_check_cmd1(void);
 //uart1
@@ -132,21 +133,21 @@ extern err_t make_soket_10006(unsigned  char *buffer,unsigned  char *cmd);
 extern err_t make_soket_10011(unsigned  char *buffer);
 extern err_t make_soket_rxok(unsigned  char *buffer);   //接收成功
 
-extern err_t make_http_send(unsigned  char *buffer);
 extern err_t make_http_InitSoket(unsigned  char *buffer);
 extern err_t make_http_post(unsigned  char *buffer);
 extern err_t make_http_get(unsigned  char *buffer);
 extern err_t http_url_select(struct http_msee *HttpM);
-extern err_t handle_area1_info(unsigned  char *buffer);
-extern err_t handle_area2_info(unsigned  char *buffer);
 extern err_t make_area1_get(unsigned  char *buffer);
 extern err_t make_area2_get(unsigned  char *buffer);
+extern err_t make_area4_get(unsigned  char *buffer);
+extern err_t make_area5_get(unsigned  char *buffer);
 extern err_t do_area1_get(unsigned  char *flag);  //ret=0,无更新；ret=1,有更新。flag=0,无溢出；flag=1,有溢出。
-extern err_t do_area2_get(unsigned  char *flag);	//ret=0,无更新；ret=1,有更新。flag=0,无溢出；flag=1,有溢出。
 extern err_t done_area1_get(unsigned  char *buffer);
-extern err_t done_area2_get(unsigned  char *buffer);
+extern err_t get_AD_number(unsigned  char *buffer);
+extern err_t get_AD_dir(unsigned  char *buffer,unsigned  char *retdir);
 extern unsigned short cut_between_strs(unsigned  char *buffer,unsigned  char *began,unsigned  char *end, unsigned  char *ret,unsigned short maxret,unsigned short *retpoint);
 extern unsigned short cut_between_strs_inverted(unsigned  char *buffer,unsigned  char *began,unsigned  char *end, unsigned  char *ret,unsigned short maxret,unsigned short *retpoint);
+extern unsigned short find_strs(unsigned  char *buffer,unsigned  char *began,unsigned short maxret,unsigned short *retpoint);
 
 extern err_t tcpl_cmd(struct tcp_pcb *tpcb);
 extern err_t tcp2_cmd(struct tcp_pcb *tpcb);  //

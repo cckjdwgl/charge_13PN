@@ -151,6 +151,8 @@ void LCD_IOConfig(void);
 void FSMC_LCDInit(void);
 void LCD_Init(void);
 void LCD_Init1(void);
+void LCD_Init2(void);
+void LCD_InitAll(void);
 void LCD_Init_BSP(void);
 void LCD_DisplayStr(unsigned int x, unsigned int y, unsigned char *s,u16 PenColor, u16 BackColor);
 void LCD_WriteReg(uint16_t LCD_Reg ,uint16_t LCD_RegValue);

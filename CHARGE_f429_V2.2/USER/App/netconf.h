@@ -52,9 +52,9 @@
 #define TFT_DEBUG 
 	 
 #define DefineHeartTime    (5000)
-#define DefineHeartTry     (8)
+#define DefineHeartTry     (12)
+#define DefineUDPTry     	 (4)
 #define DefineURLTry     	 (4)
-#define DefineSSITry     	 (6)
 
 //lwip控制结构体
 typedef struct  

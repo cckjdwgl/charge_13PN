@@ -123,7 +123,7 @@ void udp_demo_recv(void *arg,struct udp_pcb *upcb,struct pbuf *p,struct ip_addr 
 	} 
 } 
 //UDP服务器发送数据
-void udp_demo_senddata(struct udp_pcb *upcb,unsigned  char *buffer)
+err_t udp_demo_senddata(struct udp_pcb *upcb,unsigned  char *buffer)
 {
 	struct pbuf *ptr;
 	struct ip_addr rmtipaddr;  	//远端ip地址
@@ -136,9 +136,9 @@ void udp_demo_senddata(struct udp_pcb *upcb,unsigned  char *buffer)
 	udp_demo_test();//再重新打开
 	}
 //	if((upcb->local_ip.addr ==IP_ADDR_ANY->addr) || (upcb->remote_ip.addr  == IP_ADDR_ANY->addr))
-	if((upcb->remote_ip.addr == IP_ADDR_ANY->addr))
+	if(upcb->remote_ip.addr == IP_ADDR_ANY->addr)
 	{
-		return;
+		return ERR_VAL;
 	}
 	ptr=pbuf_alloc(PBUF_TRANSPORT,strlen((char*)buffer),PBUF_POOL); //申请内存
 	if(ptr)
@@ -146,9 +146,13 @@ void udp_demo_senddata(struct udp_pcb *upcb,unsigned  char *buffer)
 		pbuf_take(ptr,(char*)buffer,strlen((char*)buffer)); //将tcp_demo_sendbuf中的数据打包进pbuf结构中
 		udp_send(upcb,ptr);	//udp发送数据 
 		pbuf_free(ptr);//释放内存
-//		Str_addto_Str(&DebugStr,"connect to udpdebup\n");
-//		tft_DisplayStr_debug(tft_debug_x,tft_debug_y, &DebugStr,WHITE, BLACK,3);
-	} 
+		LCDC.StateUpColor  = BLUE;
+		return ERR_OK;
+	}
+	else
+	{
+		return ERR_MEM;
+	}
 } 
 //关闭UDP连接
 void udp_demo_connection_close(struct udp_pcb *upcb)
@@ -175,6 +179,7 @@ void my_found(const char *name, struct ip_addr *ipaddr, void *arg)
 	sprintf((char*)LocalPoint, "DNS: %s:%d.%d.%d.%d\n",name,ip[3], ip[2], ip[1], ip[0]);
 	Str_addto_Str(&DebugStr,LocalPoint);
 	tft_DisplayStr_debug(tft_debug_x,tft_debug_y, &DebugStr,WHITE, BLACK,3);
+	udp_demo_senddata(udpdebug_pcb,LocalPoint);
 
 	if ((strcmp(name, (char *)HttpM_init.DnsNameStr) == 0))
 	{
