@@ -46,11 +46,11 @@ void dwgl_FatInit(void)
 		
 		FatFile_URL.SW_state = SW_ON;    //申请使用
 		FatFile_URL.NetState = NET_FLASH_ON;
-//		FatFile_URL.FileBuf = (void *)FatFileBuf[0];		
-//		FatFile_URL.FileBufSize  = sizeof(FatFileBuf[0]);		
+		FatFile_URL.FileBuf = (void *)FatFileBuf[2];		
+		FatFile_URL.FileBufSize  = sizeof(FatFileBuf[2]);		
 		FatFile_URL.FileBufLen  = 0;		
-		FatFile_URL.FileBufSlave  = (void *)FatFileBuf[1];		
-		FatFile_URL.FileBufSlaveSize  = sizeof(FatFileBuf[1]);			
+		FatFile_URL.FileBufSlave  = (void *)FatFileBuf[3];		
+		FatFile_URL.FileBufSlaveSize  = sizeof(FatFileBuf[3]);			
 		FatFile_URL.FileBufSlaveLen  = 0;			
 	
 		FatFile_URL.SW_state = SW_OFF; //关闭时申请使用

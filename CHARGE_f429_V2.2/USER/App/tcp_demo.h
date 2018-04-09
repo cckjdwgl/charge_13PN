@@ -40,6 +40,8 @@
 
 #define HttpU_BUFSIZE		  16	//HTTP_URL的SIZE
 
+#define TCP1_HEADSIZE		24	//定义udp最大发送数据长度 
+
 typedef err_t (*http_sent_fn)(unsigned  char *buffer);
 
 struct charge_msee 
@@ -53,7 +55,7 @@ struct charge_msee
 	
 	void *body;  //消息体
 	unsigned  char SN[16];      	//设备号
-	unsigned  char TOKEN[4];	  	//校验口令 
+	unsigned  char TOKEN[48];	  	//校验口令 
 	unsigned  char MD5[16];	    	//MD5值	
 	unsigned  char port1[8];      //端口1
 	unsigned  char port2[8];      //端口2

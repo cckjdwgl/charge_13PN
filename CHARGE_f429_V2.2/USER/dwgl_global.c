@@ -91,6 +91,7 @@ u16 ADC_BUFFER[ADC_BUFFER_SIZE];
 u8 AINx_ADCch[18]={ADC_Channel_13,ADC_Channel_12,ADC_Channel_0,ADC_Channel_1,ADC_Channel_3,ADC_Channel_0,ADC_Channel_2,ADC_Channel_1,0};
 
 u16 ADC_Base0[18];				//ADC静态值
+u16 ADC_Base1[18];				//ADC静态值
 u8 device_num[20];
 #ifndef BOOTLOADER_SOURCECODE//ZHZQ_CHANGE
 u16 AD_count[64];				//广告计数

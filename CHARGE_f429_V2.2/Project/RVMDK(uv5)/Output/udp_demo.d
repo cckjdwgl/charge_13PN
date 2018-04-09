@@ -89,3 +89,5 @@
 .\output\udp_demo.o: ..\..\USER\FATFS\ff.h
 .\output\udp_demo.o: ..\..\USER\FATFS\ffconf.h
 .\output\udp_demo.o: ..\..\USER\sdio/bsp_sdio_sd.h
+.\output\udp_demo.o: ..\..\USER\./iwdg/bsp_iwdg.h
+.\output\udp_demo.o: ..\..\USER\dwgl_chipflash.h

@@ -88,3 +88,5 @@
 .\output\diskio.o: ..\..\USER\dwgl_function.h
 .\output\diskio.o: ..\..\USER\dwgl_fat.h
 .\output\diskio.o: ..\..\USER\sdio/bsp_sdio_sd.h
+.\output\diskio.o: ..\..\USER\./iwdg/bsp_iwdg.h
+.\output\diskio.o: ..\..\USER\dwgl_chipflash.h

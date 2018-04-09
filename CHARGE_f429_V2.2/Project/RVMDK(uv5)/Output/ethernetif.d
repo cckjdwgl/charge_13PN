@@ -89,4 +89,6 @@
 .\output\ethernetif.o: ..\..\USER\FATFS\ff.h
 .\output\ethernetif.o: ..\..\USER\FATFS\ffconf.h
 .\output\ethernetif.o: ..\..\USER\sdio/bsp_sdio_sd.h
+.\output\ethernetif.o: ..\..\USER\./iwdg/bsp_iwdg.h
+.\output\ethernetif.o: ..\..\USER\dwgl_chipflash.h
 .\output\ethernetif.o: ..\..\USER\Bsp/systick/bsp_SysTick.h

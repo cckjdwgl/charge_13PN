@@ -87,4 +87,6 @@
 .\output\stm32f429_eth.o: ..\..\USER\FATFS\ff.h
 .\output\stm32f429_eth.o: ..\..\USER\FATFS\ffconf.h
 .\output\stm32f429_eth.o: ..\..\USER\sdio/bsp_sdio_sd.h
+.\output\stm32f429_eth.o: ..\..\USER\./iwdg/bsp_iwdg.h
+.\output\stm32f429_eth.o: ..\..\USER\dwgl_chipflash.h
 .\output\stm32f429_eth.o: ..\..\USER\Bsp/systick/bsp_SysTick.h

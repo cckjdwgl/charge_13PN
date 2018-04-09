@@ -87,3 +87,5 @@
 .\output\asciilib_65k.o: ..\..\USER\FATFS\ff.h
 .\output\asciilib_65k.o: ..\..\USER\FATFS\ffconf.h
 .\output\asciilib_65k.o: ..\..\USER\sdio/bsp_sdio_sd.h
+.\output\asciilib_65k.o: ..\..\USER\./iwdg/bsp_iwdg.h
+.\output\asciilib_65k.o: ..\..\USER\dwgl_chipflash.h

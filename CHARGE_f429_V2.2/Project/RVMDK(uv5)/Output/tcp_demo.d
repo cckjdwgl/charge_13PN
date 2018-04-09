@@ -88,3 +88,5 @@
 .\output\tcp_demo.o: ..\..\USER\FATFS\ff.h
 .\output\tcp_demo.o: ..\..\USER\FATFS\ffconf.h
 .\output\tcp_demo.o: ..\..\USER\sdio/bsp_sdio_sd.h
+.\output\tcp_demo.o: ..\..\USER\./iwdg/bsp_iwdg.h
+.\output\tcp_demo.o: ..\..\USER\dwgl_chipflash.h

@@ -49,7 +49,7 @@ struct  debug_str {
 
 extern struct  FatFileTable FatFile_AD;   //广告
 extern struct  FatFileTable FatFile_URL;   //下载
-extern unsigned char FatFileBuf[2][FatFileBuf_size];  //调试使用的
+extern unsigned char FatFileBuf[4][FatFileBuf_size];  //调试使用的
 extern struct  debug_str DebugStr;
 extern unsigned char DebugStr_str_data[str_data_size];  //调试使用的
 extern u32 g32_temp;

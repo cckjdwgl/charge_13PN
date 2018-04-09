@@ -161,6 +161,10 @@ void SysTick_Handler(void)
  	ADC_SoftwareStartConv(USER_ADC1);
 	ADC_SoftwareStartConv(USER_ADC3);
 	}
+	if(time_sys-device.ChargeTimer < 180000)
+	{
+	IWDG_ReloadCounter();//Î¹¹·
+	}
 }
 
 /******************************************************************************/

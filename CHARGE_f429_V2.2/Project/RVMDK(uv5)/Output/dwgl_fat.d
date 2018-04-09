@@ -88,4 +88,6 @@
 .\output\dwgl_fat.o: ..\..\USER\dwgl_function.h
 .\output\dwgl_fat.o: ..\..\USER\dwgl_fat.h
 .\output\dwgl_fat.o: ..\..\USER\sdio/bsp_sdio_sd.h
+.\output\dwgl_fat.o: ..\..\USER\./iwdg/bsp_iwdg.h
+.\output\dwgl_fat.o: ..\..\USER\dwgl_chipflash.h
 .\output\dwgl_fat.o: ..\..\USER\dwgl_fat.h

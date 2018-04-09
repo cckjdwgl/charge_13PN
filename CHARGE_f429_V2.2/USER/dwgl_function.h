@@ -126,11 +126,12 @@ extern void make_http_mess(void);
 extern void make_udpdebug_mess(void);
 extern err_t make_soket_10000(unsigned  char *buffer);
 extern err_t make_soket_10001(unsigned  char *buffer);
-extern err_t cmd_soket_10003(unsigned  char *cmd);
+extern err_t cmd_soket_10003(unsigned  char *cmd,unsigned  char *ret);    //cmd10003分析
 extern err_t make_soket_10004(unsigned  char *buffer,unsigned  char *cmd);
-extern err_t cmd_soket_10005(unsigned  char *cmd);
+extern err_t cmd_soket_10005(unsigned  char *cmd,unsigned  char *ret);    //cmd10005分析
 extern err_t make_soket_10006(unsigned  char *buffer,unsigned  char *cmd);
-extern err_t make_soket_10011(unsigned  char *buffer);
+extern err_t make_soket_10009(unsigned  char *buffer,unsigned  char *ret);
+extern err_t make_soket_10011(unsigned  char *buffer,unsigned  char *ret);
 extern err_t make_soket_rxok(unsigned  char *buffer);   //接收成功
 
 extern err_t make_http_InitSoket(unsigned  char *buffer);

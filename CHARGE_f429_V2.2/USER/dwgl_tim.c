@@ -27,6 +27,7 @@ void TIM3_Config(uint16_t period,uint16_t prescaler)
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 	
+	TIM_DeInit(TIM3);
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3,ENABLE);  ///使能TIM3时钟
 	
 	TIM_TimeBaseInitStructure.TIM_Prescaler=prescaler;  //定时器分频

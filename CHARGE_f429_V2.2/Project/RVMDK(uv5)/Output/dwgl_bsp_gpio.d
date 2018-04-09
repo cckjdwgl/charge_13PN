@@ -88,3 +88,5 @@
 .\output\dwgl_bsp_gpio.o: ..\..\USER\FATFS\ff.h
 .\output\dwgl_bsp_gpio.o: ..\..\USER\FATFS\ffconf.h
 .\output\dwgl_bsp_gpio.o: ..\..\USER\sdio/bsp_sdio_sd.h
+.\output\dwgl_bsp_gpio.o: ..\..\USER\./iwdg/bsp_iwdg.h
+.\output\dwgl_bsp_gpio.o: ..\..\USER\dwgl_chipflash.h

@@ -88,3 +88,5 @@
 .\output\stm32f4xx_hash_md5.o: ..\..\USER\FATFS\ff.h
 .\output\stm32f4xx_hash_md5.o: ..\..\USER\FATFS\ffconf.h
 .\output\stm32f4xx_hash_md5.o: ..\..\USER\sdio/bsp_sdio_sd.h
+.\output\stm32f4xx_hash_md5.o: ..\..\USER\./iwdg/bsp_iwdg.h
+.\output\stm32f4xx_hash_md5.o: ..\..\USER\dwgl_chipflash.h

@@ -186,8 +186,7 @@ void LCD_Init_BSP(void)
   readWriteTiming.FMC_BusTurnAroundDuration = 0x00;
   readWriteTiming.FMC_CLKDivision = 0x00;
   readWriteTiming.FMC_DataLatency = 0x00;
-  readWriteTiming.FMC_AccessMode = FMC_AccessMode_A;	 //模式A 
-	
+  readWriteTiming.FMC_AccessMode = FMC_AccessMode_A;	 //模式A 	
 
 //	writeTiming.FSMC_AddressSetupTime =9;	      //地址建立时间（ADDSET）为9个HCLK =54ns 
 //  writeTiming.FSMC_AddressHoldTime = 0x00;	 //地址保持时间（A		

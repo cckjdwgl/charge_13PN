@@ -71,6 +71,8 @@
 .\output\dwgl_global.o: ..\..\USER\FATFS\ff.h
 .\output\dwgl_global.o: ..\..\USER\FATFS\ffconf.h
 .\output\dwgl_global.o: ..\..\USER\sdio/bsp_sdio_sd.h
+.\output\dwgl_global.o: ..\..\USER\./iwdg/bsp_iwdg.h
+.\output\dwgl_global.o: ..\..\USER\dwgl_chipflash.h
 .\output\dwgl_global.o: ..\..\USER\App\tcp_demo.h
 .\output\dwgl_global.o: ..\..\USER\App\udp_demo.h
 .\output\dwgl_global.o: ..\..\USER\lwip-1.4.1\src\include\lwip\sys.h

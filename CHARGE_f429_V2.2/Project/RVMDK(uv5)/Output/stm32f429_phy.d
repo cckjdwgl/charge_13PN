@@ -87,5 +87,7 @@
 .\output\stm32f429_phy.o: ..\..\USER\FATFS\ff.h
 .\output\stm32f429_phy.o: ..\..\USER\FATFS\ffconf.h
 .\output\stm32f429_phy.o: ..\..\USER\sdio/bsp_sdio_sd.h
+.\output\stm32f429_phy.o: ..\..\USER\./iwdg/bsp_iwdg.h
+.\output\stm32f429_phy.o: ..\..\USER\dwgl_chipflash.h
 .\output\stm32f429_phy.o: ..\..\USER\Bsp/systick/bsp_SysTick.h
 .\output\stm32f429_phy.o: ..\..\USER\lwip-1.4.1\src\include\lwip/dhcp.h

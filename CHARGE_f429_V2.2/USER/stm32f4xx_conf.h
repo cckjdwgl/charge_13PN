@@ -102,6 +102,10 @@
 #include "dwgl_global.h"
 #include "dwgl_function.h"
 #include "dwgl_fat.h"
+#include "./iwdg/bsp_iwdg.h"   
+#if 1
+#include "dwgl_chipflash.h"
+#endif
 
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/

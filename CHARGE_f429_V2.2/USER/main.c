@@ -47,10 +47,13 @@ int main(void)
 	SPI_FLASH_Init();
 	/* 初始化系统滴答定时器 */	
 	SysTick_Init();
+	IWDG_Config(IWDG_Prescaler_256 ,0xfff); //OPEN DOG =26S
 	
 	TIM3_Config(999,899);//10ms定时器
 	printf("以太网通信实现例程\n");
 	NVIC_Configuration();
+//		__disable_irq();
+		__enable_irq();
 		
 	LCD_Init_BSP();	
 	LCD_InitAll();	
@@ -148,6 +151,7 @@ int main(void)
 		LCD_task();
 		charge_task();
 		key_task();
+		software_task();
 		
 	}
 }

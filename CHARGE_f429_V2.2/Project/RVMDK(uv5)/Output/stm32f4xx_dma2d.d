@@ -88,3 +88,5 @@
 .\output\stm32f4xx_dma2d.o: ..\..\USER\FATFS\ff.h
 .\output\stm32f4xx_dma2d.o: ..\..\USER\FATFS\ffconf.h
 .\output\stm32f4xx_dma2d.o: ..\..\USER\sdio/bsp_sdio_sd.h
+.\output\stm32f4xx_dma2d.o: ..\..\USER\./iwdg/bsp_iwdg.h
+.\output\stm32f4xx_dma2d.o: ..\..\USER\dwgl_chipflash.h

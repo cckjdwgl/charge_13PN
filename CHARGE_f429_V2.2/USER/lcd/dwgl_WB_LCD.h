@@ -26,14 +26,14 @@
 
 //#define SET_XY   1    //ºá1
 //#define SET_XY   2	//ºá2
-//#define SET_XY   3	//Êú1
-#define SET_XY   4		//Êú2
+#define SET_XY   3	//Êú1
+//#define SET_XY   4		//Êú2
 
 
 //#define SET_XY1   1    //ºá1
 //#define SET_XY1   2	//ºá2
-#define SET_XY1   3	//Êú1
-//#define SET_XY1   4		//Êú2
+//#define SET_XY1   3	//Êú1
+#define SET_XY1   4		//Êú2
 
 //#define SET_XY2   1    //ºá1
 //#define SET_XY2   2	//ºá2

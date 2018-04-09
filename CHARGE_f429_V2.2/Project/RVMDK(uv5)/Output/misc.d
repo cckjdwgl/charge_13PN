@@ -88,3 +88,5 @@
 .\output\misc.o: ..\..\USER\FATFS\ff.h
 .\output\misc.o: ..\..\USER\FATFS\ffconf.h
 .\output\misc.o: ..\..\USER\sdio/bsp_sdio_sd.h
+.\output\misc.o: ..\..\USER\./iwdg/bsp_iwdg.h
+.\output\misc.o: ..\..\USER\dwgl_chipflash.h

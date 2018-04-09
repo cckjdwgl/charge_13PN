@@ -87,3 +87,5 @@
 .\output\hzlib_65k.o: ..\..\USER\FATFS\ff.h
 .\output\hzlib_65k.o: ..\..\USER\FATFS\ffconf.h
 .\output\hzlib_65k.o: ..\..\USER\sdio/bsp_sdio_sd.h
+.\output\hzlib_65k.o: ..\..\USER\./iwdg/bsp_iwdg.h
+.\output\hzlib_65k.o: ..\..\USER\dwgl_chipflash.h

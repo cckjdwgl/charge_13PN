@@ -87,3 +87,5 @@
 .\output\main.o: ..\..\USER\FATFS\ff.h
 .\output\main.o: ..\..\USER\FATFS\ffconf.h
 .\output\main.o: ..\..\USER\sdio/bsp_sdio_sd.h
+.\output\main.o: ..\..\USER\./iwdg/bsp_iwdg.h
+.\output\main.o: ..\..\USER\dwgl_chipflash.h

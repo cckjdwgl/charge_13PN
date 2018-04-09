@@ -7,7 +7,7 @@
 struct  FatFileTable FatFile_AD;   //广告
 struct  FatFileTable FatFile_URL;   //广告
 
-unsigned char FatFileBuf[2][FatFileBuf_size];  //调试使用的
+unsigned char FatFileBuf[4][FatFileBuf_size];  //调试使用的
 struct  debug_str DebugStr;
 unsigned char DebugStr_str_data[str_data_size];  //调试使用的
 
@@ -376,15 +376,15 @@ void display_SD_BMP (u16 x,u16 y,struct FatFileTable BMP,u8 cs)
 			}
 			
 		if((x_offset>0)&&(x_offset<=240))
-			{
-				x_offset = x_offset;				
-				offset +=0;			
-				res_sd = f_read (&fsrc, buffer, (offset-40), &fnum);
-				tft_cs_enable(cs);
-				
+		{
+			tft_cs_enable(cs);
+			x_offset = x_offset;				
+			offset +=0;			
 		//	LCD_WindowMax (x, y, x+x_offset-1, y+y_offset-1);       //设置窗口	
 			LCD_WindowMax (x, y, x+y_offset-1, y+x_offset-1);       //设置窗口					
 			LCD_WriteRAM_Prepare();  				//开始写入GRAM*6 	
+			res_sd = f_read (&fsrc, buffer, (offset-40), &fnum);
+				
 	
 			for(i=0;i<y_offset;i++)	
 			{
@@ -475,11 +475,14 @@ void display_SD_BMP (u16 x,u16 y,struct FatFileTable BMP,u8 cs)
 
 		if((x_offset>0)&&(x_offset<=240))
 		{
-			res_sd = f_read (&fsrc, buffer, (offset-40), &fnum);
 			tft_cs_enable(cs);
 			
 			x_offset = x_offset;
-			LCD_WindowMax (x, y, x+y_offset-1, y+x_offset-1);       //设置窗口					
+			
+			res_sd = f_read (&fsrc, buffer, (offset-40), &fnum);
+			
+			LCD_WindowMax (x, y, x+y_offset-1, y+x_offset-1);       //设置窗口		
+			
 			LCD_WriteRAM_Prepare();  				//开始写入GRAM*6 
 				
 			global_u16p = (u16*)buffer;  //便用取一次取16位
@@ -563,13 +566,12 @@ void display_SD_BMP (u16 x,u16 y,struct FatFileTable BMP,u8 cs)
 
 		if((x_offset>0)&&(x_offset<=240))
 		{
-			res_sd = f_read (&fsrc, buffer, (offset-40), &fnum);
 			tft_cs_enable(cs);
-			
 //			x_offset1 = x_offset;
 //			LCD_WindowMax (x, y, x+y_offset-1, y+x_offset1-1);       //设置窗口					
 			LCD_WindowMax (x, y, x+y_offset-1, y+x_offset-1);       //设置窗口					
 			LCD_WriteRAM_Prepare();  				//开始写入GRAM*6 
+			res_sd = f_read (&fsrc, buffer, (offset-40), &fnum);			
 				
 //			global_u16p = (u16*)buffer;  //便用取一次取16位
 			spi_size = 	buffersize-(buffersize%x_WideBety);  //每次读的长度	
@@ -1420,6 +1422,7 @@ void tft_ShowChar(unsigned int x, unsigned int y, unsigned char num,u16 PenColor
   
 		 	LCD_WR_REG(0x0036);                                //rotation
 			LCD_WE_RAM(0x00E0);//dwgl				//横屏1
+	
  //		 LCD_WindowMax(x,y,x+8-1,y+16-1);	        //设置窗口  横屏1
 			LCD_WindowMax(x,y,x+16-1,y+8-1);	           //设置窗口	dwgl	竖屏1
 	

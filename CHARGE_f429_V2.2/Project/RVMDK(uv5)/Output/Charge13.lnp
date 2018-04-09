@@ -57,6 +57,8 @@
 ".\output\tcp_demo.o"
 ".\output\dwgl_memp.o"
 ".\output\dwgl_fat.o"
+".\output\dwgl_chipflash.o"
+".\output\bsp_iwdg.o"
 ".\output\bsp_debug_usart.o"
 ".\output\bsp_key.o"
 ".\output\bsp_systick.o"

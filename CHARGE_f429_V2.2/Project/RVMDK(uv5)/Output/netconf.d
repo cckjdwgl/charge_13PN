@@ -92,3 +92,5 @@
 .\output\netconf.o: ..\..\USER\FATFS\ff.h
 .\output\netconf.o: ..\..\USER\FATFS\ffconf.h
 .\output\netconf.o: ..\..\USER\sdio/bsp_sdio_sd.h
+.\output\netconf.o: ..\..\USER\./iwdg/bsp_iwdg.h
+.\output\netconf.o: ..\..\USER\dwgl_chipflash.h

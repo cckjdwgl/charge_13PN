@@ -97,9 +97,10 @@ void make_device_mess(void)
 	if(strlen((char*)device.Toolname)==0)
 	{
 //	sprintf((char*)device.Toolname,"99110000001000");
-	sprintf((char*)device.Toolname,"99110%d000",sn0);
+//	sprintf((char*)device.Toolname,"99110%d000",sn0);
+	sprintf((char*)device.Toolname,"03140%d000",sn0);
 	}	
-	sprintf((char*)device.Version ,"N13.17.15");
+	sprintf((char*)device.Version ,"A13.18.13");
 	device.PortNum =DefPortNum;
 	for(i=0;i<sizeof(device.PortId);i++)
 	{
@@ -107,16 +108,15 @@ void make_device_mess(void)
 	}
 	device.ChargeTimerSet = 1000;   //³äµçÊ±¼ä¼ì²é
 	device.ChargeTimer =0;
-		
+	device.SampleCurrentTimerSet = 60000;  //Ò»·ÖÖÓ²ÉÑùÒ»´ÎµçÁ÷
+	
 	for(i=0;i<DefPortNum;i++)	{
 	device.PortPowerSetTime[i] = 0; 
-	}
-	for(i=0;i<DefPortNum;i++)	{
 	device.PortPowerUseTime[i] = 0; 
+	device.PortPowerShowTime[i] = 0;
+	device.SampleCurrentNumber[i]= 0;
 	}
-	for(i=0;i<DefPortNum;i++)	{
-	device.PortPowerShowTime[i] = 0; 
-	}
+	
 }
 //---------------------------------------------------------------------------------
 void cmd_Power_on(void)
@@ -762,7 +762,7 @@ err_t tcpl_task(struct tcp_pcb *tpcb)
 	tcpl_cmd(tpcb);
 	if(ChargeM_init.SW_state ==SW_ON)
 	{		
-		if((time_sys-ChargeM_init.LastRxTime>ChargeM_init.HeartTime* DefineHeartTry))  //ÐÄÌø¶ÏÁË  60S
+		if((time_sys-ChargeM_init.LastRxTime>ChargeM_init.HeartTime* DefineHeartTry))  //ÐÄÌø¶ÏÁË  300S
 		{
 			ChargeM_init.LastRxTime = time_sys;
 			ChargeM_init.NetState = NET_OFF;
@@ -804,7 +804,7 @@ err_t tcpl_task(struct tcp_pcb *tpcb)
 				if(tpcb->state ==ESTABLISHED)
 				{
 					make_soket_10000(tcp1_txbuf);
-					dwgl_hex_send(tpcb, tcp1_txbuf,(tcp1_txbuf[2]*245+tcp1_txbuf[3]+41));					
+					dwgl_hex_send(tpcb, tcp1_txbuf,(tcp1_txbuf[2]*256+tcp1_txbuf[3]+41));					
 					sprintf((char*)LocalPoint, "SOKET send:%d ID=10000 IP=%d.%d.%d.%d.%d\r\n",time_sys,soket_lwip.remoteip[0],soket_lwip.remoteip[1],soket_lwip.remoteip[2],soket_lwip.remoteip[3],soket_lwip.remote_port);
 					Str_addto_Str(&DebugStr,LocalPoint);
 					tft_DisplayStr_debug(tft_debug_x,tft_debug_y, &DebugStr,WHITE, BLACK,3);
@@ -830,10 +830,10 @@ err_t tcpl_task(struct tcp_pcb *tpcb)
 			{
 				if(tpcb->state ==ESTABLISHED)   
 				{
-					if(ChargeM_init.NetState==NET_SOCKET_OK || time_sys-ChargeM_init.LastRxTime>(ChargeM_init.HeartTime* DefineHeartTry/3)) //20ÃëÒ»´Î
+					if(ChargeM_init.NetState==NET_SOCKET_OK || time_sys-ChargeM_init.LastRxTime>(ChargeM_init.HeartTime* DefineHeartTry/15)) //20ÃëÒ»´Î
 					{
 					make_soket_10001(tcp1_txbuf);
-					dwgl_hex_send(tpcb, tcp1_txbuf,(tcp1_txbuf[2]*245+tcp1_txbuf[3]+41));
+					dwgl_hex_send(tpcb, tcp1_txbuf,(tcp1_txbuf[2]*256+tcp1_txbuf[3]+41));
 					sprintf((char*)LocalPoint, "SOKET send:%d ID=10001 IP=%d.%d.%d.%d.%d\r\n",time_sys,soket_lwip.remoteip[0],soket_lwip.remoteip[1],soket_lwip.remoteip[2],soket_lwip.remoteip[3],soket_lwip.remote_port);
 					Str_addto_Str(&DebugStr,LocalPoint);
 					printf("SOKET send:%d ID=10001\r\n",time_sys);
@@ -915,7 +915,7 @@ err_t tcp2_task(struct tcp_pcb *tpcb)
 					http_pcb=tcp_echoclient_disconnect(tpcb);
 				}
 			}
-			else if((time_sys-HttpM_init.LastRxTime>HttpM_init.HeartTime* DefineHeartTry))
+			else if((time_sys-HttpM_init.LastRxTime>HttpM_init.HeartTime* DefineHTTPTry))
 			{
 				HttpM_init.LastRxTime = time_sys;
 				sprintf((char*)LocalPoint, "HTTP time out:state=%d\r\n",tpcb->state);
@@ -1048,7 +1048,7 @@ err_t tcpl_cmd(struct tcp_pcb *tpcb)
   err_t wr_err = ERR_OK;	
 	unsigned  char *cmd_bufer;
 	u16 mess_id;
-//	u16 i;
+	u16 i;
 	unsigned char *LocalPoint;
 //	unsigned int LocalPointSize;
 	
@@ -1058,6 +1058,27 @@ err_t tcpl_cmd(struct tcp_pcb *tpcb)
 	mess_id +=cmd_bufer[1];	
 	if(mess_id==0)
 	{
+		for(i=0;i<TASK_MAX;i++)   //Ö÷¶¯·¢ÆðµÄSOKETÍ¨ÐÅ
+		{
+			if(tpcb->state ==ESTABLISHED)
+			{
+				if(device.task[i]!=TASK_NULL)
+				{
+					device.TaskStatus[i].Flag=device.task[i](tcp1_txbuf,&device.TaskStatus[i].Port);
+					dwgl_hex_send(soket_pcb, tcp1_txbuf,(tcp1_txbuf[2]*256+tcp1_txbuf[3]+41));
+					res_sd = f_open(&fnew, "logs/log_socket.txt", FA_OPEN_ALWAYS | FA_WRITE); 	 		
+					res_sd = f_lseek(&fnew, fnew.fsize);
+					mess_id =tcp1_txbuf[0]*256;
+					mess_id +=tcp1_txbuf[1];	
+					sprintf((char*)FatFile_URL.FileBufSlave,"time_sys:%d ID=%d\r\n",time_sys,mess_id);
+					res_sd=f_write(&fnew,FatFile_URL.FileBufSlave,strlen((char*)FatFile_URL.FileBufSlave),&fnum);
+					res_sd=f_write(&fnew,tcp1_txbuf,(tcp1_txbuf[2]*256+tcp1_txbuf[3]+41),&fnum);
+					res_sd=f_write(&fnew,"\r\n",2,&fnum);
+					res_sd=f_close(&fnew);	
+					device.task[i]=TASK_NULL;
+				}
+			}
+		}		
 		return wr_err;
 	}
 	LCDC.StateDownColor  = GREEN;
@@ -1086,19 +1107,18 @@ err_t tcpl_cmd(struct tcp_pcb *tpcb)
 						break;
 		case  10003:      //¶Ë¿Ú²éÑ¯Í¨Öª
 					make_soket_rxok(tcp1_txbuf);
-					dwgl_hex_send(soket_pcb, tcp1_txbuf,(tcp1_txbuf[2]*245+tcp1_txbuf[3]+41));
+					dwgl_hex_send(soket_pcb, tcp1_txbuf,(tcp1_txbuf[2]*256+tcp1_txbuf[3]+41));
 					make_soket_10004(tcp1_txbuf,cmd_bufer);
-					dwgl_hex_send(soket_pcb, tcp1_txbuf,(tcp1_txbuf[2]*245+tcp1_txbuf[3]+41));
+					dwgl_hex_send(soket_pcb, tcp1_txbuf,(tcp1_txbuf[2]*256+tcp1_txbuf[3]+41));
 					break;
 		case  10004:   		//¶Ë¿Ú²éÑ¯½á¹û   ÖÕ¶Ë·¢Æð
 			
 						break;
 		case  10005: 	 		//¶Ë¿ÚÉÏµçÍ¨Öª			
 					make_soket_rxok(tcp1_txbuf);
-					dwgl_hex_send(soket_pcb, tcp1_txbuf,(tcp1_txbuf[2]*245+tcp1_txbuf[3]+41));
-					cmd_soket_10005(cmd_bufer);
+					dwgl_hex_send(soket_pcb, tcp1_txbuf,(tcp1_txbuf[2]*256+tcp1_txbuf[3]+41));
 					make_soket_10006(tcp1_txbuf,cmd_bufer);
-					dwgl_hex_send(soket_pcb, tcp1_txbuf,(tcp1_txbuf[2]*245+tcp1_txbuf[3]+41));
+					dwgl_hex_send(soket_pcb, tcp1_txbuf,(tcp1_txbuf[2]*256+tcp1_txbuf[3]+41));
 						break;
 		case  10006: 			//ÉÏµç½á¹û   ÖÕ¶Ë·¢Æð
 			
@@ -1174,7 +1194,7 @@ err_t tcp2_cmd(struct tcp_pcb *tpcb)
 	{		
 		if(HttpM_init.HttpUrl->NetState == NET_ON)
 		{
-			cut_between_strs(cmd_bufer,(unsigned  char*)"HTTP/1.1 200" ,(unsigned  char*)"OK", FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);			
+			cut_between_strs(cmd_bufer,(unsigned  char*)"HTTP/1.1" ,(unsigned  char*)"200", FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);			
 			if(strlen((char*)FatFile_URL.FileHead))     //ÓÐÊÕµ½ÕýÈ··´»Ø
 			{
 				HttpM_init.HttpUrl->NetState= NET_HTTP_OK;
@@ -1231,7 +1251,7 @@ err_t tcp2_cmd(struct tcp_pcb *tpcb)
 	{
 		if(HttpM_init.HttpUrl->NetState == NET_ON)
 		{
-			cut_between_strs(cmd_bufer,(unsigned  char*)"HTTP/1.1 200" ,(unsigned  char*)"OK", FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);			
+			cut_between_strs(cmd_bufer,(unsigned  char*)"HTTP/1.1" ,(unsigned  char*)"200", FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);			
 			if(strlen((char*)FatFile_URL.FileHead))     //ÓÐÊÕµ½ÕýÈ··´»Ø
 			{
 				HttpM_init.HttpUrl->NetState= NET_HTTP_OK;
@@ -1265,9 +1285,9 @@ err_t tcp2_cmd(struct tcp_pcb *tpcb)
 		}
 		else if(HttpM_init.HttpUrl->NetState == NET_HTTP_OK)
 		{
-			FatFile_URL.FileBufLen = HttpM_init.RxLength;
-			FatFile_URL.FileBuf = cmd_bufer;
-			cmd_File_Tx();
+//			FatFile_URL.FileBufLen = HttpM_init.RxLength;
+//			FatFile_URL.FileBuf = cmd_bufer;
+//			cmd_File_Tx();
 		
 			res_sd = f_open(&fnew, (char*)HttpM_init.HttpUrl->DestPath, FA_OPEN_ALWAYS | FA_WRITE); 	
 			res_sd = f_lseek(&fnew, fnew.fsize);
@@ -1297,7 +1317,7 @@ extern err_t udp1_cmd(struct udp_pcb *upcb)
   err_t wr_err = ERR_OK;
 	u16 i;
 	u16 j;
-	u32 sn0;
+	u32 sn0,sn1;
   FILINFO finfo1;
 //  FILINFO finfo2;
 	unsigned  char *cmd_bufer;
@@ -1408,7 +1428,7 @@ extern err_t udp1_cmd(struct udp_pcb *upcb)
 		}
 		else if(cmd_bufer[0] =='r'&&cmd_bufer[1] =='e'&&cmd_bufer[2] =='a'&&cmd_bufer[3] =='d')   //¶ÁÐÅÏ¢
 		{				
-			i = cut_between_strs(cmd_bufer,(unsigned  char*)"\"mcuid\":\"",(unsigned  char*)"\"", LocalPoint,LocalPointSize,&j);			
+			i = cut_between_strs(cmd_bufer,(unsigned  char*)"\"mcu\":\"",(unsigned  char*)"\"", LocalPoint,LocalPointSize,&j);			
 //			if(strlen((char*)LocalPoint))
 			if (strcmp(( char*)LocalPoint, (const char *)"?")== 0)
 			{
@@ -1417,8 +1437,37 @@ extern err_t udp1_cmd(struct udp_pcb *upcb)
 				sn0=*(vu32*)(0x1FFF7A14);//»ñÈ¡STM32µÄÎ¨Ò»IDµÄÇ°24Î»×÷ÎªMACµØÖ·ºóÈý×Ö½Ú
 				sprintf((char*)LocalPoint, "%s %X",(char*)LocalPoint,sn0);
 				sn0=*(vu32*)(0x1FFF7A18);//»ñÈ¡STM32µÄÎ¨Ò»IDµÄÇ°24Î»×÷ÎªMACµØÖ·ºóÈý×Ö½Ú
-				sprintf((char*)LocalPoint, "%s %X",(char*)LocalPoint,sn0);
+				sprintf((char*)LocalPoint, "mcuid:%X %X %X",*(vu32*)(0x1FFF7A10),*(vu32*)(0x1FFF7A14),*(vu32*)(0x1FFF7A18));				
+				sprintf((char*)LocalPoint, "%s\r\nversion:%s\r\nname: %s\r\nprovince:%d",(char*)LocalPoint,device.Version,device.Toolname,device.province);
+				sprintf((char*)LocalPoint, "%s\r\nSELF_MAC:%X.%X.%X.%X.%X.%X",(char*)LocalPoint,soket_lwip.mac[0],soket_lwip.mac[1],soket_lwip.mac[2],soket_lwip.mac[3],soket_lwip.mac[4],soket_lwip.mac[5]);
+				sprintf((char*)LocalPoint, "%s\r\nSELF_IP:%d.%d.%d.%d",(char*)LocalPoint,(uint8_t)(gnetif.ip_addr.addr),(uint8_t)(gnetif.ip_addr.addr >> 8),(uint8_t)(gnetif.ip_addr.addr >> 16),(uint8_t)(gnetif.ip_addr.addr >> 24));
+				sprintf((char*)LocalPoint, "%s\r\nSOKET_IP:%d.%d.%d.%d.%d",(char*)LocalPoint,soket_lwip.remoteip[0],soket_lwip.remoteip[1],soket_lwip.remoteip[2],soket_lwip.remoteip[3],soket_lwip.remote_port);
+				sprintf((char*)LocalPoint, "%s\r\nSSI:%s\r\nAD:",(char*)LocalPoint,(char*)HttpU_buffer[0].url);
+				for(i=0;i<LCDC.ADNum;i++)	
+				{
+					sprintf((char*)FatFile_URL.FileSourcePath, "[name:%s,count:%d,]",(char*)LCDC.AD[i].name,LCDC.AD[i].count);
+					strcat((char*)LocalPoint,(char*)FatFile_URL.FileSourcePath); 
+				}
+				for(i=0;i<DefPortNum;i++)	
+				{
+					sprintf((char*)FatFile_URL.FileSourcePath, "\r\nLCD%d:%s,",(i+1),device.PortName[i]);
+					strcat((char*)LocalPoint,(char*)FatFile_URL.FileSourcePath); 					
+					for(j=0;j<device.SampleCurrentNumber[i];j++)	
+					{
+						sn0 = device.PortCurrent[i][j];
+						sn0 = sn0*1000;						
+						sn0 = sn0/1630;						
+						sn1 = device.PortVoltage[i][j];
+						sn1 = sn1*1000;						
+						sn1 = sn1/116;						
+						sprintf((char*)FatFile_URL.FileSourcePath, "%dmin:%dmA %dmV,",j,sn0,sn1);
+						strcat((char*)LocalPoint,(char*)FatFile_URL.FileSourcePath); 
+					}
+				}
+				strcat((char*)LocalPoint,"\r\n"); 
 				udp_demo_senddata(upcb,LocalPoint);										
+				sprintf((char*)LocalPoint, "%s:ok\r\n",cmd_bufer);
+				udp_demo_senddata(upcb,LocalPoint);	
 			}
 			i = cut_between_strs(cmd_bufer,(unsigned  char*)"\"sd\":\"",(unsigned  char*)"\"", FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&j); //¶ÁSD¿¨ÄÚÈÝ
 			if(strlen((char*)FatFile_URL.FileSourcePath))
@@ -1462,6 +1511,8 @@ extern err_t udp1_cmd(struct udp_pcb *upcb)
 				{
 					device.PortPowerSetTime[port_n] = atoi((char*)LocalPoint);
 					device.PortPowerUseTime[port_n] = device.PortPowerSetTime[port_n];
+					device.SampleCurrentNumber[port_n] = 0;
+					device.SampleCurrentTimer[port_n] = time_sys;
 				}
 				sprintf((char*)LocalPoint, "%s:ok\r\n",cmd_bufer);
 				udp_demo_senddata(upcb,LocalPoint);										
@@ -1543,7 +1594,7 @@ void make_soket_mess(void)
 	
 	sprintf((char*)ChargeM_init.SN,"%s",device.Toolname);
 
-	sprintf((char*)ChargeM_init.TOKEN,"TOK");
+	sprintf((char*)ChargeM_init.TOKEN,"TOKEN");
 	
 	sprintf((char*)ChargeM_init.MD5,"MD5=NULL");
 
@@ -1576,7 +1627,7 @@ void make_http_mess(void)
 		cut_between_strs(FatFile_URL.FileHead,(unsigned  char*)"\"SSI\":\"",(unsigned  char*)"\"", HttpU_buffer[0].url,sizeof(HttpU_buffer[0].url),&u16temp); //¶ÁSD¿¨ÄÚÈÝ
 	}
 	res_sd=f_close(&fsrc);
-	if(strlen((char*)HttpU_buffer[0].url))
+	if(strlen((char*)HttpU_buffer[0].url)==0)
 	{
 		sprintf((char*)HttpU_buffer[0].url, "%s/site/v1/device/register",BaseUrl);	
 	}	
@@ -1718,7 +1769,7 @@ err_t make_soket_10000(unsigned  char *buffer)
 	buffer[len++] =',';
 	}
 	
-	for(i=0;i<4;i++)
+	for(i=0;i<sizeof(ChargeM_init.TOKEN);i++)
 	{
 	if(ChargeM_init.TOKEN[i]==0)
 	{		break;				}
@@ -1823,16 +1874,17 @@ err_t make_soket_10001(unsigned  char *buffer)
 	
 	return ERR_OK;
 }
-err_t make_soket_10004(unsigned  char *buffer,unsigned  char *cmd)
+//¶Ë¿Ú²éÑ¯ÃüÁî
+err_t cmd_soket_10003(unsigned  char *cmd,unsigned  char *ret)
 {
-	unsigned  char i;
-	unsigned  short len;	
-	unsigned  char port_n=0;
-	unsigned  char number[16];
+	unsigned  short i;
+//	unsigned  short j;
+	unsigned  char port_n;
+//	unsigned  char number[16];
 	unsigned  char *key_point;
 	unsigned char *LocalPoint;
-//	unsigned int LocalPointSize;
-	
+//		ChargeM_init
+		
 	LocalPoint = data_b;
 //	key_point = &cmd[24];
 	key_point = &cmd[25];
@@ -1845,6 +1897,7 @@ err_t make_soket_10004(unsigned  char *buffer,unsigned  char *cmd)
 		LocalPoint[i] = key_point[i];
 	}
 	LocalPoint[i] = 0;
+	port_n = DefPortNum;
 	for(i=0;i<DefPortNum;i++)
 	{
 		if ((strcmp((char *)LocalPoint, (char *)device.PortName[i]) == 0))
@@ -1853,7 +1906,38 @@ err_t make_soket_10004(unsigned  char *buffer,unsigned  char *cmd)
 			break;
 		}
 	}
-		
+	if(port_n>=DefPortNum)
+	{
+		*ret = 0;
+		return ERR_VAL;	
+	}
+	else
+	{
+		*ret = port_n;
+		return ERR_OK;	
+	}
+}
+//¶Ë¿Ú²éÑ¯·µ»Ø
+err_t make_soket_10004(unsigned  char *buffer,unsigned  char *cmd)
+{
+	unsigned  char i;
+	unsigned  short len;	
+	unsigned  char port_n=0;
+	unsigned  char number[16];
+	unsigned char *LocalPoint;
+//	unsigned int LocalPointSize;
+	
+	LocalPoint = data_b;
+	
+	if(cmd_soket_10003(cmd,&port_n)!=ERR_OK)
+	{
+		for(i=0;i<TCP1_HEADSIZE;i++)
+		{
+			buffer[i] = 0;
+		}
+		return ERR_BUF;
+	}		
+	
 	ChargeM_init.ID = 10004;
 	len = 0;
 	for(i=0;i<2;i++)
@@ -1950,8 +2034,8 @@ err_t make_soket_10004(unsigned  char *buffer,unsigned  char *cmd)
 	udp_demo_senddata(udpdebug_pcb,LocalPoint);
 	return ERR_OK;
 }
-//
-err_t cmd_soket_10005(unsigned  char *cmd)
+//ÉÏµçÃüÁî
+err_t cmd_soket_10005(unsigned  char *cmd,unsigned  char *ret)
 {
 	unsigned  short i;
 	unsigned  short j;
@@ -1971,6 +2055,7 @@ err_t cmd_soket_10005(unsigned  char *cmd)
 		number[j] = key_point[j];
 	}
 	number[j] = 0; 
+	port_n = DefPortNum;
 	for(i=0;i<DefPortNum;i++)
 	{
 		if ((strcmp((char *)number, (char *)device.PortName[i]) == 0))
@@ -1979,7 +2064,13 @@ err_t cmd_soket_10005(unsigned  char *cmd)
 			break;
 		}
 	}
+	if(port_n>=DefPortNum)
+	{
+		*ret = 0;
+		return ERR_VAL;	
+	}
 	
+	*ret = port_n;
 	key_point = &key_point[j+1];
 	for(j=0;j<sizeof(number)-1;j++)
 	{
@@ -1992,43 +2083,34 @@ err_t cmd_soket_10005(unsigned  char *cmd)
 	number[j] = 0;
 	if(port_n<DefPortNum)
 	{
-	device.PortPowerSetTime[port_n] = atoi((char*)number);
-	device.PortPowerUseTime[port_n] = device.PortPowerSetTime[port_n];
+		device.PortPowerSetTime[port_n] = atoi((char*)number);
+		device.PortPowerUseTime[port_n] = device.PortPowerSetTime[port_n];
+		device.SampleCurrentNumber[port_n] = 0;
+		device.SampleCurrentTimer[port_n] = time_sys;
 	}
 	return ERR_OK;	
 }
+//ÉÏµç·µ»Ø
 err_t make_soket_10006(unsigned  char *buffer,unsigned  char *cmd)
 {
 	unsigned  char i;
-	unsigned  short j;
+//	unsigned  short j;
 	unsigned  short len;	
 	unsigned  char port_n =0;
 	unsigned  char number[16];
-	unsigned  char *key_point;
 	unsigned char *LocalPoint;
 //	unsigned int LocalPointSize;
 	
 	LocalPoint = data_b;
-//	key_point = &cmd[24];
-	key_point = &cmd[25];
-	for(j=0;j<sizeof(number)-1;j++)
+	if(cmd_soket_10005(cmd,&port_n)!=ERR_OK)
 	{
-		if(key_point[j] >'9'||key_point[j] <'0')			
+		for(i=0;i<TCP1_HEADSIZE;i++)
 		{
-				break;
+			buffer[i] = 0;
 		}
-		number[j] = key_point[j];
-	}
-	number[j] = 0; 
-	for(j=0;j<DefPortNum;j++)
-	{
-		if ((strcmp((char *)number, (char *)device.PortName[j]) == 0))
-		{
-			port_n = j;			
-			break;
-		}
-	}
-	
+		return ERR_BUF;
+	}		
+		
 	ChargeM_init.ID = 10006;
 	len = 0;
 	for(i=0;i<2;i++)
@@ -2125,18 +2207,19 @@ err_t make_soket_10006(unsigned  char *buffer,unsigned  char *cmd)
 	udp_demo_senddata(udpdebug_pcb,LocalPoint);
 	return ERR_OK;
 }
-//---------------------------------------------------
-err_t cmd_soket_10011(unsigned  char *buffer)
+//¹ã¸æÍ³¼ÆÉÏ±¨--------------------------------------
+err_t make_soket_10009(unsigned  char *buffer,unsigned  char *status)
 {
 	unsigned  char i;
+	unsigned  char j;
 	unsigned  short len;	
-	unsigned  char port_n =0;
+//	unsigned  char port_n =0;
 	unsigned  char number[16];
 	unsigned char *LocalPoint;
 //	unsigned int LocalPointSize;
 	
 	LocalPoint = data_b;
-	ChargeM_init.ID = 10011;
+	ChargeM_init.ID = 10009;
 	len = 0;
 	for(i=0;i<2;i++)
 	{
@@ -2184,30 +2267,34 @@ err_t cmd_soket_10011(unsigned  char *buffer)
 	{
 		buffer[len++] =',';
 	}
-	
-	for(i=0;i<sizeof(device.PortName[0]);i++)
+//	LCDC.AD[0].name
+//LCDC.ADNum 	
+	for(i=0;i<LCDC.ADNum;i++)
 	{
-		if(device.PortName[port_n][i]==0)
-		{			break;			}
-		buffer[len]	= device.PortName[port_n][i];
-		len++;
-	}
-	if(i>0)
-	{
-		buffer[len++] =',';
-	}
-
-	u16toStr(device.PortCurrent[port_n][0],number);  //µçÁ÷
-	for(i=0;i<sizeof(number);i++)
-	{
-		if(number[i]==0)
-		{			break;			}
-		buffer[len]	= number[i];
-		len++;
-	}
-	if(i>0)
-	{
-		buffer[len++] =',';
+//		for(j=0;j<sizeof(LCDC.AD[i].name);j++)
+		for(j=0;j<strlen((char*)LCDC.AD[i].name);j++)
+		{
+			buffer[len]	= LCDC.AD[i].name[j];
+			len++;
+		}
+		if(j>0)
+		{
+			buffer[len++] =',';
+		}
+		u16toStr(LCDC.AD[i].count,number);  //¼ÆÊý
+		LCDC.AD[i].count = 0; //¼ÆÊýÇå0
+//		for(j=0;j<sizeof(number);j++)
+		for(j=0;j<strlen((char*)number);j++)
+		{
+			if(number[j]==0)
+			{			break;			}
+			buffer[len]	= number[j];
+			len++;
+		}
+		if(j>0)
+		{
+			buffer[len++] =',';
+		}
 	}
 	
 //ÏûÏ¢Ìå end 		
@@ -2228,7 +2315,120 @@ err_t cmd_soket_10011(unsigned  char *buffer)
 	buffer[2] = (len>>8);  //Í³¼Æ×Ü³¤¶È
 	buffer[3] = (len&0XFF);  //Í³¼Æ×Ü³¤¶È
 	
-	sprintf((char*)LocalPoint, "SOKET send:%d ID=10006 IP=%d.%d.%d.%d.%d\r\n",time_sys,soket_lwip.remoteip[0],soket_lwip.remoteip[1],soket_lwip.remoteip[2],soket_lwip.remoteip[3],soket_lwip.remote_port);
+	sprintf((char*)LocalPoint, "SOKET send:%d ID=10009 IP=%d.%d.%d.%d.%d\r\n",time_sys,soket_lwip.remoteip[0],soket_lwip.remoteip[1],soket_lwip.remoteip[2],soket_lwip.remoteip[3],soket_lwip.remote_port);
+	Str_addto_Str(&DebugStr,LocalPoint);
+	tft_DisplayStr_debug(tft_debug_x,tft_debug_y, &DebugStr,WHITE, BLACK,3);	
+	udp_demo_senddata(udpdebug_pcb,LocalPoint);
+	return ERR_OK;
+}
+//µçÁ÷Í³¼ÆÉÏ±¨--------------------------------------
+err_t make_soket_10011(unsigned  char *buffer,unsigned  char *status)
+{
+	unsigned  char i;
+	unsigned  char j;
+	unsigned  short len;	
+	unsigned  char port_n =0;
+	unsigned  char number[16];
+	unsigned char *LocalPoint;
+//	unsigned int LocalPointSize;
+	
+	LocalPoint = data_b;
+	port_n = *status;
+	ChargeM_init.ID = 10011;
+	len = 0;
+	for(i=0;i<2;i++)
+	{
+		buffer[len]	= *(((unsigned  char *)&ChargeM_init.ID)+1-i);
+		len++;
+	}
+	for(i=0;i<2;i++)
+	{
+		buffer[len]	= *(((unsigned  char *)&ChargeM_init.LEN)+1-i);
+		len++;
+	}
+	ChargeM_init.NUMBER++;
+	if(ChargeM_init.NUMBER>10000)
+	{		ChargeM_init.NUMBER = 1000;	}
+	for(i=0;i<2;i++)
+	{
+		buffer[len]	= *(((unsigned  char *)&ChargeM_init.NUMBER)+1-i);
+		len++;
+	}
+	for(i=0;i<2;i++)
+	{
+		buffer[len]	= *(((unsigned  char *)&ChargeM_init.encryption)+1-i);
+		len++;
+	}
+	for(i=0;i<8;i++)
+	{
+		buffer[len]	= ChargeM_init.longitude[i];
+		len++;
+	}
+	for(i=0;i<8;i++)
+	{
+		buffer[len]	= ChargeM_init.latitude[i];
+		len++;
+	}
+	
+//ÏûÏ¢Ìå
+	for(i=0;i<sizeof(ChargeM_init.SN);i++)
+	{
+		if(ChargeM_init.SN[i]==0)
+		{			break;			}
+		buffer[len]	= ChargeM_init.SN[i];
+		len++;
+	}
+	if(i>0)
+	{
+		buffer[len++] =',';
+	}	
+	for(i=0;i<sizeof(device.PortName[0]);i++)
+	{
+		if(device.PortName[port_n][i]==0)
+		{			break;			}
+		buffer[len]	= device.PortName[port_n][i];
+		len++;
+	}
+	if(i>0)
+	{
+		buffer[len++] =',';
+	}
+	for(i=0;i<device.SampleCurrentNumber[port_n];i++)
+	{
+		u16toStr(device.PortCurrent[port_n][i],number);  //µçÁ÷
+//		for(j=0;j<sizeof(number);j++)
+		for(j=0;j<strlen((char*)number);j++)
+		{
+			if(number[j]==0)
+			{			break;			}
+			buffer[len]	= number[j];
+			len++;
+		}
+		if(j>0)
+		{
+			buffer[len++] =',';
+		}
+	}
+	
+//ÏûÏ¢Ìå end 		
+	for(i=0;i<16;i++)
+	{
+		buffer[len]	= ChargeM_init.MD5[i];
+		len++;
+	}
+	if(len>40)
+	{
+		len -=41;//24×Ö½ÚÍ·+16×Ö½ÚµÄ¼ìÑé¡
+	}
+	else
+	{
+		len = 0;
+		return ERR_BUF;
+	}
+	buffer[2] = (len>>8);  //Í³¼Æ×Ü³¤¶È
+	buffer[3] = (len&0XFF);  //Í³¼Æ×Ü³¤¶È
+	
+	sprintf((char*)LocalPoint, "SOKET send:%d ID=10011 IP=%d.%d.%d.%d.%d\r\n",time_sys,soket_lwip.remoteip[0],soket_lwip.remoteip[1],soket_lwip.remoteip[2],soket_lwip.remoteip[3],soket_lwip.remote_port);
 	Str_addto_Str(&DebugStr,LocalPoint);
 	tft_DisplayStr_debug(tft_debug_x,tft_debug_y, &DebugStr,WHITE, BLACK,3);	
 	udp_demo_senddata(udpdebug_pcb,LocalPoint);
@@ -2295,17 +2495,20 @@ err_t http_url_select(struct http_msee *HttpM)
 					if(time_sys-HttpU->LastRxTime >(HttpU->HeartTime))
 					{
 						HttpU->LastRxTime = time_sys;
-						if(wr_err==ERR_OK)  //ÎÞ¸üÐÂ
+						if(device.Version[0]==APP_FLAG)   //
 						{
-							wr_err = do_area1_get((unsigned char*)"area1/area1_info.get");			
-						}
-						if(wr_err==ERR_OK)	//ÎÞ¸üÐÂ
-						{				   
-							wr_err = do_area1_get((unsigned char*)"area2/area2_info.get");			
-						}
-						if(wr_err==ERR_OK)	//ÎÞ¸üÐÂ
-						{				   
-							wr_err = do_area1_get((unsigned char*)"area4/area4_info.get");			
+							if(wr_err==ERR_OK)  //ÎÞ¸üÐÂ
+							{
+								wr_err = do_area1_get((unsigned char*)"area1/area1_info.get");			
+							}
+							if(wr_err==ERR_OK)	//ÎÞ¸üÐÂ
+							{				   
+								wr_err = do_area1_get((unsigned char*)"area2/area2_info.get");			
+							}
+							if(wr_err==ERR_OK)	//ÎÞ¸üÐÂ
+							{				   
+								wr_err = do_area1_get((unsigned char*)"area4/area4_info.get");			
+							}
 						}
 						if(wr_err==ERR_OK)	//ÎÞ¸üÐÂ
 						{				   
@@ -2393,6 +2596,11 @@ err_t http_url_select(struct http_msee *HttpM)
 						HttpM_init.DnsNameStr[i] =0;
 						break;
 					}					
+					if(key_piont[j]=='/')
+					{
+						HttpM_init.DnsNameStr[i] =0;
+						break;
+					}					
 					HttpM_init.DnsNameStr[i]= key_piont[j];
 					j++;
 				}
@@ -2409,7 +2617,11 @@ err_t http_url_select(struct http_msee *HttpM)
 						HttpM_init.PortStr[i] = key_piont[j];	
 						j++;
 					}	
-				}	
+				}
+				else if(key_piont[j]=='/')
+				{
+					sprintf((char*)HttpM_init.PortStr, "80");
+				}					
 				HttpM_init.Port = atoi((char*)HttpM_init.PortStr);
 			}
 
@@ -2432,28 +2644,148 @@ err_t make_area1_get(unsigned  char *buffer)
 	u16 u16temp;
 	u16 len;
 	u32 fnum1;
-//	u32 fnum2;
+	u32 fnum2;
 	unsigned  char port_n =0;
 //	unsigned char *LocalPoint;
 //	unsigned int LocalPointSize;
 	
 //	LocalPoint = data_b;
 //	LocalPointSize = sizeof(data_b);
-		res_sd = f_open(&fsrc, "area1/area1_info.txt", FA_OPEN_EXISTING | FA_READ); 	
-		if(res_sd != FR_OK)
+	FatFile_URL.FileBufLen  = 0;		
+
+	res_sd = f_open(&fsrc, "area1/area1_info.txt", FA_OPEN_EXISTING | FA_READ); 	
+	if(res_sd != FR_OK)
+	{
+		return res_sd;
+	}
+	for(FatFile_URL.FileHandleLen=0;FatFile_URL.FileHandleLen <fsrc.fsize;)
+	{
+		res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize-1, &fnum1);
+		{					FatFile_URL.FileBuf[fnum1]=0;				}			
+		i=0;
+		while(1)
 		{
-			return res_sd;
-		}		
+			FatFile_URL.FileBufSlave[0] = 0;
+			len = cut_between_strs(&FatFile_URL.FileBuf[i],(unsigned  char*)"\"microChargeUrl\":\"",(unsigned  char*)"\",", FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);
+			if(strlen((char*)FatFile_URL.FileHead))
+			{
+				i += len; 					
+				len = cut_between_strs(&FatFile_URL.FileBuf[i],(unsigned  char*)"\"microChargePort\":\"",(unsigned  char*)"\",", FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);					
+				if(strlen((char*)FatFile_URL.FileSourcePath))
+				{
+					i += len; 		
+						
+					len = cut_between_strs(FatFile_URL.FileBuf,(unsigned  char*)"\"token\":",(unsigned  char*)"}}", ChargeM_init.TOKEN,sizeof(ChargeM_init.TOKEN),&u16temp);					
+					sprintf((char*)ChargeM_init.DnsNameStr,"%s",(char*)FatFile_URL.FileHead);
+					sprintf((char*)ChargeM_init.PortStr,"%s",(char*)FatFile_URL.FileSourcePath);
+					ChargeM_init.Port = atoi((char*)ChargeM_init.PortStr);							
+					ChargeM_init.SW_state = SW_ON;		
+					ChargeM_init.NetState  = NET_ON;		
+					ChargeM_init.LastRxTime = time_sys;
+				}
+				else
+				{
+					break;
+				}
+			}
+			else
+			{
+				break;
+			}
+		}
+		
+		i=0;
+		while(1)
+		{
+			FatFile_URL.FileBufSlave[0] = 0;
+			len = cut_between_strs(&FatFile_URL.FileBuf[i],(unsigned  char*)"\"portCode\":",(unsigned  char*)",", FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);
+			if(strlen((char*)FatFile_URL.FileHead))
+			{
+				i += len; 
+				len = cut_between_strs(&FatFile_URL.FileBuf[i],(unsigned  char*)"\"qcodeUrl\"",(unsigned  char*)"}", FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);					
+				if(strlen((char*)FatFile_URL.FileSourcePath))
+				{
+					i += len; 
+					
+					sprintf((char*)device.PortName[port_n],"%s",(char*)FatFile_URL.FileHead);
+					cut_between_strs_inverted((unsigned  char*)FatFile_URL.FileSourcePath,(unsigned  char*)"/",(unsigned  char*)"\"", FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);
+					sprintf((char*)device.PortSourcePath[port_n++],"area1/%s",(char*)FatFile_URL.FileHead);
+					if(port_n>=DefPortNum)
+					{
+						port_n = DefPortNum-1;
+					}
+				}
+				else
+				{
+					break;
+				}
+			}
+			else
+			{
+				break;
+			}
+		}
+			
+		if(FatFile_URL.FileBufSize-1 > fnum1)
+		{
+			break;
+		}			
+	}
+	
+	wr_err = ERR_OK;
+	res_sd = f_open(&fnew, "area1/area1_info.get", FA_OPEN_EXISTING | FA_READ); 
+	res_sd = f_lseek(&fsrc, 0);
+	if(res_sd == FR_OK)
+	{
+		for(FatFile_URL.FileHandleLen=0;FatFile_URL.FileHandleLen <fsrc.fsize;)
+		{
+			res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize-1, &fnum1);
+			res_sd = f_read (&fnew, FatFile_URL.FileBufSlave, FatFile_URL.FileBufSlaveSize-1, &fnum2);
+			{					FatFile_URL.FileBuf[fnum1]=0;				}			
+			{					FatFile_URL.FileBufSlave[fnum2]=0;				}			
+			i=0;
+			while(1)
+			{
+				len = cut_between_strs(&FatFile_URL.FileBuf[i],(unsigned  char*)"\"http:",(unsigned  char*)"bmp\"", FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);
+				if(strlen((char*)FatFile_URL.FileHead))
+				{
+					i += len; 
+					len = cut_between_strs(FatFile_URL.FileBufSlave,(unsigned  char*)FatFile_URL.FileHead, (unsigned  char*)"\"",FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);
+					if((strlen((char*)FatFile_URL.FileSourcePath))==0)
+					{
+						wr_err = ERR_VAL;
+						break;
+					}
+				}
+				else
+				{
+					break;
+				}
+			}
+			
+			if(FatFile_URL.FileBufSize-1 > fnum1)
+			{
+				break;
+			}			
+		}
+	}
+	else
+	{
+		wr_err = ERR_VAL;
+	}
+	res_sd=f_close(&fnew);	
+
+	if(wr_err == ERR_VAL)
+	{
+		port_n =0;
 		res_sd = f_open(&fnew, "area1/area1_info.get", FA_CREATE_ALWAYS | FA_WRITE); 	
-		FatFile_URL.FileBuf = str_buffer;		
-		FatFile_URL.FileBufSize  = sizeof(str_buffer);		
+		res_sd = f_lseek(&fsrc, 0);
 		FatFile_URL.FileBufLen  = 0;		
 		for(FatFile_URL.FileHandleLen=0;FatFile_URL.FileHandleLen <fsrc.fsize;)
 		{
 //			res_sd = f_read (FIL* fp, void* buff, UINT btr, UINT* br);
-			res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum1);
-				if(FatFile_URL.FileBufSize > fnum1)
-				{					FatFile_URL.FileBuf[fnum1]=0;				}			
+			res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize-1, &fnum1);
+			{					FatFile_URL.FileBuf[fnum1]=0;				}			
 			i=0;
 			while(1)
 			{
@@ -2493,52 +2825,21 @@ err_t make_area1_get(unsigned  char *buffer)
 					break;
 				}
 			}
-		
-			i=0;
-			while(1)
-			{
-				FatFile_URL.FileBufSlave[0] = 0;
-				len = cut_between_strs(&FatFile_URL.FileBuf[i],(unsigned  char*)"\"microChargeUrl\":\"",(unsigned  char*)"\",", FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);
-				if(strlen((char*)FatFile_URL.FileHead))
-				{
-					i += len; 					
-				  len = cut_between_strs(&FatFile_URL.FileBuf[i],(unsigned  char*)"\"microChargePort\":\"",(unsigned  char*)"\",", FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);					
-					if(strlen((char*)FatFile_URL.FileSourcePath))
-					{
-					i += len; 						
-					strcat((char*)FatFile_URL.FileBufSlave,"[\"name\":\""); 		
-					strcat((char*)FatFile_URL.FileBufSlave,(char*)FatFile_URL.FileHead); 		
-						strcat((char*)FatFile_URL.FileBufSlave,":"); 		
-					strcat((char*)FatFile_URL.FileBufSlave,(char*)FatFile_URL.FileSourcePath); 		
-					strcat((char*)FatFile_URL.FileBufSlave,"\","); 		
-					strcat((char*)FatFile_URL.FileBufSlave,"\"handle\":\"0\",\"type\":\"K10\",]\r\n");  //SOCKET ÀàÐÍ								
-					res_sd=f_write(&fnew,FatFile_URL.FileBufSlave,strlen((char*)FatFile_URL.FileBufSlave),&fnum);		
-						
-					sprintf((char*)ChargeM_init.DnsNameStr,"%s",(char*)FatFile_URL.FileHead);
-					sprintf((char*)ChargeM_init.PortStr,"%s",(char*)FatFile_URL.FileSourcePath);
-					ChargeM_init.Port = atoi((char*)ChargeM_init.PortStr);							
-					ChargeM_init.SW_state = SW_ON;		
-					ChargeM_init.NetState  = NET_ON;		
-					ChargeM_init.LastRxTime = time_sys;
-					}
-					else
-					{
-						break;
-					}
-				}
-				else
-				{
-					break;
-				}
-			}		
-					
-			if(FatFile_URL.FileBufSize > fnum1)
+			if(FatFile_URL.FileBufSize-1 > fnum1)
 			{
 				break;
 			}			
 		}
-		res_sd=f_close(&fnew);			
-		res_sd=f_close(&fsrc);			
+	res_sd=f_close(&fnew);			
+	}
+	else
+	{
+		for(i=0;i<DefPortNum;i++)
+		{
+			LCDC.SPTime[i] = time_sys-LCDC.SPTimeSet;
+		}
+	}
+	res_sd=f_close(&fsrc);			
 	return wr_err;
 }
 err_t make_area2_get(unsigned  char *buffer)
@@ -2556,8 +2857,6 @@ err_t make_area2_get(unsigned  char *buffer)
 		{
 			return res_sd;
 		}		
-		FatFile_URL.FileBuf = str_buffer;		
-		FatFile_URL.FileBufSize  = sizeof(str_buffer);		
 		FatFile_URL.FileBufLen  = 0;		
 		wr_err = ERR_OK;
 		res_sd = f_open(&fnew, "area2/area2_info.get", FA_OPEN_EXISTING | FA_READ); 
@@ -2565,10 +2864,10 @@ err_t make_area2_get(unsigned  char *buffer)
 		{
 			for(FatFile_URL.FileHandleLen=0;FatFile_URL.FileHandleLen <fsrc.fsize;)
 			{
-				res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum1);
-				res_sd = f_read (&fnew, FatFile_URL.FileBufSlave, FatFile_URL.FileBufSlaveSize, &fnum2);
-				if(FatFile_URL.FileBufSize > fnum1)
+				res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize-1, &fnum1);
+				res_sd = f_read (&fnew, FatFile_URL.FileBufSlave, FatFile_URL.FileBufSlaveSize-1, &fnum2);
 				{					FatFile_URL.FileBuf[fnum1]=0;				}			
+				{					FatFile_URL.FileBufSlave[fnum2]=0;				}			
 				i=0;
 				while(1)
 				{
@@ -2588,7 +2887,7 @@ err_t make_area2_get(unsigned  char *buffer)
 						break;
 					}
 				}
-				if(FatFile_URL.FileBufSize > fnum1)
+				if(FatFile_URL.FileBufSize-1 > fnum1)
 				{
 					break;
 				}			
@@ -2606,8 +2905,7 @@ err_t make_area2_get(unsigned  char *buffer)
 			res_sd = f_lseek(&fsrc, 0);
 			for(FatFile_URL.FileHandleLen=0;FatFile_URL.FileHandleLen <fsrc.fsize;)
 			{
-				res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum1);
-				if(FatFile_URL.FileBufSize > fnum1)
+				res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize-1, &fnum1);
 				{					FatFile_URL.FileBuf[fnum1]=0;				}			
 				i=0;
 				while(1)
@@ -2629,7 +2927,7 @@ err_t make_area2_get(unsigned  char *buffer)
 						break;
 					}
 				}
-				if(FatFile_URL.FileBufSize > fnum1)
+				if(FatFile_URL.FileBufSize-1 > fnum1)
 				{
 					break;
 				}			
@@ -2660,8 +2958,6 @@ err_t make_area4_get(unsigned  char *buffer)
 		{
 			return res_sd;
 		}		
-		FatFile_URL.FileBuf = str_buffer;		
-		FatFile_URL.FileBufSize  = sizeof(str_buffer);		
 		FatFile_URL.FileBufLen  = 0;		
 		wr_err = ERR_OK;
 		res_sd = f_open(&fnew, "area4/area4_info.get", FA_OPEN_EXISTING | FA_READ); 
@@ -2669,10 +2965,10 @@ err_t make_area4_get(unsigned  char *buffer)
 		{
 			for(FatFile_URL.FileHandleLen=0;FatFile_URL.FileHandleLen <fsrc.fsize;)
 			{
-				res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum1);
-				res_sd = f_read (&fnew, FatFile_URL.FileBufSlave, FatFile_URL.FileBufSlaveSize, &fnum2);
-				if(FatFile_URL.FileBufSize > fnum1)
+				res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize-1, &fnum1);
+				res_sd = f_read (&fnew, FatFile_URL.FileBufSlave, FatFile_URL.FileBufSlaveSize-1, &fnum2);
 				{					FatFile_URL.FileBuf[fnum1]=0;				}			
+				{					FatFile_URL.FileBufSlave[fnum2]=0;				}			
 				i=0;
 				while(1)
 				{
@@ -2693,7 +2989,7 @@ err_t make_area4_get(unsigned  char *buffer)
 						break;
 					}
 				}
-				if(FatFile_URL.FileBufSize > fnum1)
+				if(FatFile_URL.FileBufSize-1 > fnum1)
 				{
 					break;
 				}			
@@ -2711,8 +3007,7 @@ err_t make_area4_get(unsigned  char *buffer)
 			res_sd = f_lseek(&fsrc, 0);
 			for(FatFile_URL.FileHandleLen=0;FatFile_URL.FileHandleLen <fsrc.fsize;)
 			{
-				res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum1);
-				if(FatFile_URL.FileBufSize > fnum1)
+				res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize-1, &fnum1);
 				{					FatFile_URL.FileBuf[fnum1]=0;				}			
 				i=0;
 				while(1)
@@ -2749,7 +3044,7 @@ err_t make_area4_get(unsigned  char *buffer)
 						break;
 					}
 				}
-				if(FatFile_URL.FileBufSize > fnum1)
+				if(FatFile_URL.FileBufSize-1 > fnum1)
 				{
 					break;
 				}			
@@ -2776,8 +3071,6 @@ err_t make_area5_get(unsigned  char *buffer)
 		{
 			return res_sd;
 		}		
-		FatFile_URL.FileBuf = str_buffer;		
-		FatFile_URL.FileBufSize  = sizeof(str_buffer);		
 		FatFile_URL.FileBufLen  = 0;		
 		wr_err = ERR_OK;
 		res_sd = f_open(&fnew, "area5/area5_info.get", FA_OPEN_EXISTING | FA_READ); 
@@ -2785,14 +3078,14 @@ err_t make_area5_get(unsigned  char *buffer)
 		{
 			for(FatFile_URL.FileHandleLen=0;FatFile_URL.FileHandleLen <fsrc.fsize;)
 			{
-				res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum1);
-				res_sd = f_read (&fnew, FatFile_URL.FileBufSlave, FatFile_URL.FileBufSlaveSize, &fnum2);
+				res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize-1, &fnum1);
+				res_sd = f_read (&fnew, FatFile_URL.FileBufSlave, FatFile_URL.FileBufSlaveSize-1, &fnum2);
 				i=0;
-				if(FatFile_URL.FileBufSize > fnum1)
-					{					FatFile_URL.FileBuf[fnum1]=0;				}			
+				{					FatFile_URL.FileBuf[fnum1]=0;				}			
+				{					FatFile_URL.FileBufSlave[fnum2]=0;				}			
 				while(1)
 				{
-					len = cut_between_strs(&FatFile_URL.FileBuf[i],(unsigned  char*)"\"http",(unsigned  char*)"\"", FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);
+					len = cut_between_strs(&FatFile_URL.FileBuf[i],(unsigned  char*)"\"http",(unsigned  char*)".bin", FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);
 					if(strlen((char*)FatFile_URL.FileHead))
 					{
 						i += len; 
@@ -2807,8 +3100,23 @@ err_t make_area5_get(unsigned  char *buffer)
 					{
 						break;
 					}
+					
+					len = cut_between_strs(FatFile_URL.FileBuf,(unsigned  char*)"\"softwareNewVersion\":\"",(unsigned  char*)"\"", FatFile_URL.FileHead,sizeof(FatFile_URL.FileHead),&u16temp);
+					if(strlen((char*)FatFile_URL.FileHead))
+					{
+						len = cut_between_strs(FatFile_URL.FileBufSlave,(unsigned  char*)FatFile_URL.FileHead, (unsigned  char*)"\"",FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);
+						if((strlen((char*)FatFile_URL.FileSourcePath))==0)
+						{
+							wr_err = ERR_VAL;
+							break;
+						}
+					}
+					else
+					{
+						break;
+					}
 				}
-				if(FatFile_URL.FileBufSize > fnum1)
+				if(FatFile_URL.FileBufSize-1 > fnum1)
 				{
 					break;
 				}			
@@ -2826,10 +3134,10 @@ err_t make_area5_get(unsigned  char *buffer)
 			res_sd = f_lseek(&fsrc, 0);
 			for(FatFile_URL.FileHandleLen=0;FatFile_URL.FileHandleLen <fsrc.fsize;)
 			{
-				res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum1);
-				if(FatFile_URL.FileBufSize > fnum1)
+				res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize-1, &fnum1);
 				{					FatFile_URL.FileBuf[fnum1]=0;				}			
 				i=0;
+				len = cut_between_strs(FatFile_URL.FileBuf,(unsigned  char*)"\"softwareNewVersion\":\"",(unsigned  char*)"\"", FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);
 				while(1)
 				{
 					FatFile_URL.FileBufSlave[0] = 0;
@@ -2837,7 +3145,9 @@ err_t make_area5_get(unsigned  char *buffer)
 					if(strlen((char*)FatFile_URL.FileHead))
 					{
 						i += len; 
-						strcat((char*)FatFile_URL.FileBufSlave,"[\"handle\":\"0\",\"type\":\"G50\","); 								
+						strcat((char*)FatFile_URL.FileBufSlave,"[\"SoftwareVersion\":\""); 								
+						strcat((char*)FatFile_URL.FileBufSlave,(char*)FatFile_URL.FileSourcePath); 								
+						strcat((char*)FatFile_URL.FileBufSlave,"\",\"handle\":\"0\",\"type\":\"G50\","); 								
 						strcat((char*)FatFile_URL.FileBufSlave,"\"url\":\"http"); 		
 						strcat((char*)FatFile_URL.FileBufSlave,(char*)FatFile_URL.FileHead); 		
 						strcat((char*)FatFile_URL.FileBufSlave,"\",]\r\n"); 		
@@ -2849,7 +3159,7 @@ err_t make_area5_get(unsigned  char *buffer)
 						break;
 					}
 				}
-				if(FatFile_URL.FileBufSize > fnum1)
+				if(FatFile_URL.FileBufSize-1 > fnum1)
 				{
 					break;
 				}			
@@ -2879,12 +3189,11 @@ err_t do_area1_get(unsigned  char *buffer)
 		res_sd = f_open(&fsrc, (char*)buffer, FA_OPEN_EXISTING | FA_READ); 	
 		if(res_sd != FR_OK)
 		{			return res_sd;		}		
-		FatFile_URL.FileBuf = str_buffer;		
-		FatFile_URL.FileBufSize  = sizeof(str_buffer);		
 		FatFile_URL.FileBufLen  = 0;		
 		for(FatFile_URL.FileHandleLen=0;FatFile_URL.FileHandleLen <fsrc.fsize;)
 		{
-			res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum1);
+			res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize-1, &fnum1);
+			{					FatFile_URL.FileBuf[fnum1]=0;				}			
 			i=0;
 			while(i<fnum1)
 			{
@@ -2929,8 +3238,15 @@ err_t do_area1_get(unsigned  char *buffer)
 									sprintf((char*)HttpU->url,"%s",(char*)FatFile_URL.FileSourcePath);
 									sprintf((char*)HttpU->SourcePath,"%s",buffer);
 									temp = 0;
-									cut_between_strs_inverted((unsigned  char*)HttpU->url,(unsigned  char*)"/",&temp, FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);									
 									cut_between_strs_inverted(buffer,(unsigned  char*)"\0",(unsigned  char*)"/", FatFile_URL.FileDestPath,sizeof(FatFile_URL.FileDestPath),&u16temp);
+									if(strcmp((char *)FatFile_URL.FileDestPath, (char *)"area5") == 0)
+									{
+										cut_between_strs_inverted((unsigned  char*)HttpU->url,(unsigned  char*)"_",&temp, FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);		
+									}
+									else
+									{
+										cut_between_strs_inverted((unsigned  char*)HttpU->url,(unsigned  char*)"/",&temp, FatFile_URL.FileSourcePath,sizeof(FatFile_URL.FileSourcePath),&u16temp);
+									}										
 									sprintf((char*)HttpU->DestPath,"%s/%s",(char*)FatFile_URL.FileDestPath,FatFile_URL.FileSourcePath);
 								}
 								else
@@ -2947,7 +3263,7 @@ err_t do_area1_get(unsigned  char *buffer)
 					break;
 				}
 			}
-			if(FatFile_URL.FileBufSize > fnum1)
+			if(FatFile_URL.FileBufSize-1 > fnum1)
 			{
 				break;
 			}			
@@ -2971,12 +3287,11 @@ err_t done_area1_get(unsigned  char *buffer)
 		res_sd = f_open(&fsrc, (char *)buffer, FA_OPEN_EXISTING |FA_READ |FA_WRITE); 	
 		if(res_sd != FR_OK)
 		{			return res_sd;		}		
-		FatFile_URL.FileBuf = str_buffer;		
-		FatFile_URL.FileBufSize  = sizeof(str_buffer);		
 		FatFile_URL.FileBufLen  = 0;		
 		for(FatFile_URL.FileHandleLen=0;FatFile_URL.FileHandleLen <fsrc.fsize;)
 		{
-			res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize, &fnum1);
+			res_sd = f_read (&fsrc, FatFile_URL.FileBuf, FatFile_URL.FileBufSize-1, &fnum1);
+			{					FatFile_URL.FileBuf[fnum1]=0;				}			
 			i=0;
 			j=0;
 			while(i<fnum1)
@@ -3001,7 +3316,7 @@ err_t done_area1_get(unsigned  char *buffer)
 					break;
 				}
 			}
-			if(FatFile_URL.FileBufSize > fnum1)
+			if(FatFile_URL.FileBufSize-1 > fnum1)
 			{
 				break;
 			}			
@@ -3025,8 +3340,6 @@ err_t get_AD_number(unsigned  char *buffer)
 		res_sd = f_open(&fsrc, (char*)buffer, FA_OPEN_EXISTING | FA_READ); 	
 		if(res_sd != FR_OK)
 		{			return res_sd;		}		
-		FatFile_URL.FileBuf = str_buffer;		
-		FatFile_URL.FileBufSize  = sizeof(str_buffer);		
 		FatFile_URL.FileBufLen  = 0;		
 		LCDC.ADNum = 0;
 		for(FatFile_URL.FileHandleLen=0;FatFile_URL.FileHandleLen <fsrc.fsize;)
@@ -3084,8 +3397,6 @@ err_t get_AD_dir(unsigned  char *buffer,unsigned  char *retdir)
 		res_sd = f_open(&fsrc, (char*)"area4/area4_info.get", FA_OPEN_EXISTING |FA_READ); 	
 		if(res_sd != FR_OK)
 		{			return res_sd;		}		
-		FatFile_URL.FileBuf = str_buffer;		
-		FatFile_URL.FileBufSize  = sizeof(str_buffer);		
 		FatFile_URL.FileBufLen  = 0;		
 		for(FatFile_URL.FileHandleLen=0;FatFile_URL.FileHandleLen <fsrc.fsize;)
 		{
@@ -3606,6 +3917,7 @@ err_t make_http_get(unsigned  char *buffer)
 err_t LCD_task(void)
 {	
 	u8 i;
+	u8 j;
 	u16 temp_x;
 	unsigned char *LocalPoint;
 //	unsigned int LocalPointSize;
@@ -3617,7 +3929,7 @@ err_t LCD_task(void)
 		LCDC.SPTimeSet = 60000;
 		LCDC.ADTimeSet = 15000;
 	  LCDC.TimeTimerSet =1000;
-		LCDC.TestTimerSet = 600000;
+		LCDC.TestTimerSet = 5000;
 		LCDC.StateMessageTimerSet = 2000;
 		
 		for(i=0;i<DefPortNum;i++)
@@ -3643,6 +3955,8 @@ err_t LCD_task(void)
 			if(LCDC.LcdNumber[i]>0)
 			{
 				tft_Clear(0,0,320,240,BLUE,LCDC.LcdNumber[i]);		
+				sprintf((char*)LocalPoint, "Version:%s",device.Version);
+				tft_DisplayStr(300, 120-(strlen((char*)LocalPoint)*4), LocalPoint,BLACK, WHITE,3);						
 			}
 		}
 		
@@ -3654,21 +3968,43 @@ err_t LCD_task(void)
 	}
 	else
 	{
+		if(device.Version[0]==BL_FLAG)
+		{
+			for(i=0;i<DefPortNum;i++)
+			{
+				if(LCDC.Mode[i]!=LCD_MODE_TEST)
+				{
+					LCDC.Mode[i] = LCD_MODE_TEST;
+					tft_Clear(160,0,160,240,RED,LCDC.LcdNumber[i]);			
+				}
+			}
+		}
+		
 		if(time_sys -LCDC.StateMessageTimer>LCDC.StateMessageTimerSet)
 		{
 			LCDC.StateMessageTimer += LCDC.StateMessageTimerSet;
-			for(i=0;i<DefPortNum;i++)
+			State_Message(0,0,LCDC.StateUpColor,LCDC.StateDownColor,LGRAY);
+		}
+		if(device.use&USE_NEW_CODE)
+		{
+			for(j=0;j<DefPortNum;j++)
 			{
+			LCDC.SPTime[i] = time_sys-LCDC.SPTimeSet;
+			}
+			device.use&=~USE_NEW_CODE;
+		}
+	
+		for(i=0;i<DefPortNum;i++)
+		{
+			if((time_sys - LCDC.TestTimer[i])>(LCDC.TestTimerSet)&& (LCDC.LcdNumber[i]>0))   //ÆÁ²âÊÔ
+			{		
+				LCDC.TestTimer[i] = time_sys;
 				if(LCDC.LcdNumber[i]>0)
 				{
 					LCD_TEST(LCDC.LcdNumber[i]);
 				}
-			}				
-			State_Message(0,0,LCDC.StateUpColor,LCDC.StateDownColor,LGRAY);
-		}
-		
-		for(i=0;i<DefPortNum;i++)
-		{
+			}
+			
 			if((LCDC.Mode[i])==LCD_MODE0)  //³õÊ¼Ä£Ê½
 			{
 				if(time_sys-LCDC.TimeTimer[i]>LCDC.TimeTimerSet && (LCDC.LcdNumber[i]>0))
@@ -3779,9 +4115,35 @@ err_t LCD_task(void)
 					{						LCDC.POWEROFFTIME[i]++;						}
 					else
 					{						LCDC.POWEROFFTIME[i]=0;						}
-					if(LCDC.POWEROFFTIME[i]>5)
+					if(LCDC.POWEROFFTIME[i]>5)   //ÉÏµç½áÊø£¬·¢ËÍ¼ÆÊý¡£
 					{
 						LCDC.Mode[i] = LCD_MODE0;
+						for(j=0;j<TASK_MAX;j++)
+						{
+							if(device.task[j]==TASK_NULL)
+							{
+								device.task[j]= make_soket_10009;
+								break;
+							}
+						}
+						if(j>=TASK_MAX)
+						{
+								device.task[0]= make_soket_10009;
+						}
+						for(j=0;j<TASK_MAX;j++)
+						{
+							if(device.task[j]==TASK_NULL)
+							{
+								device.task[j]= make_soket_10011;
+								device.TaskStatus[j].Port = device.PortId[i];
+								break;
+							}
+						}
+						if(j>=TASK_MAX)
+						{
+								device.task[1]= make_soket_10011;
+								device.TaskStatus[1].Port = device.PortId[i];
+						}
 					}
 				}
 			}
@@ -3794,7 +4156,7 @@ err_t LCD_task(void)
 					if(device.PortPowerUseTime[i]==0)
 					{
 						//³õÊ¼»¯ÆÁ
-						LCD_InitAll();
+//						LCD_InitAll();
 						
 						tft_Clear(0,0,320,240,WHITE,LCDC.LcdNumber[i]);		
 						if(FatFile_AD.SW_state == SW_OFF)  //¹Ø±ÕÊ±ÉêÇëÊ¹ÓÃ
@@ -3839,20 +4201,24 @@ err_t LCD_task(void)
 				if(time_sys-LCDC.SPTime[i]>LCDC.SPTimeSet && (LCDC.LcdNumber[i]>0))
 				{			
 					LCDC.SPTime[i] = time_sys;					
-					tft_Clear(160,0,160,240,RED,LCDC.LcdNumber[i]);				
-					if(FatFile_AD.SW_state == SW_OFF)  //¹Ø±ÕÊ±ÉêÇëÊ¹ÓÃ
+					tft_Clear(160,0,160,240,RED,LCDC.LcdNumber[i]);			
+					if(device.Version[0]==APP_FLAG)   //BLÄ£Ê½
 					{
-						FatFile_AD.SW_state = SW_ON;    //
-						FatFile_AD.NetState = NET_FLASH_ON;
-						
-						FatFile_AD.f_area = 9;	//from SD
-//						FatFile_AD.f_area = 1;  //from flash 
-						FatFile_AD.f_unm = LCDC.LcdNumber[i]-1; 
-						sprintf((char*)FatFile_AD.FileSourcePath, "%s",device.PortSourcePath[i]);
-					//extern void bmp_print_unit(u16 x,u16 y,struct FatFileTable BMP,u8 cs);//ÏÔÊ¾Í¼Æ¬µ¥Ôª¡£
-						bmp_print_unit(176,(240-128)>>1,FatFile_AD,LCDC.LcdNumber[i]);//ÏÔÊ¾Í¼Æ¬µ¥Ôª¡£		
-						FatFile_AD.SW_state = SW_OFF; //¹Ø±ÕÊ±ÉêÇëÊ¹ÓÃ
-					}				
+						if(FatFile_AD.SW_state == SW_OFF)  //¹Ø±ÕÊ±ÉêÇëÊ¹ÓÃ
+						{
+							FatFile_AD.SW_state = SW_ON;    //
+							FatFile_AD.NetState = NET_FLASH_ON;
+							
+							FatFile_AD.f_area = 9;	//from SD
+		//						FatFile_AD.f_area = 1;  //from flash 
+							FatFile_AD.f_unm = LCDC.LcdNumber[i]-1; 
+							sprintf((char*)FatFile_AD.FileSourcePath, "%s",device.PortSourcePath[i]);
+						//extern void bmp_print_unit(u16 x,u16 y,struct FatFileTable BMP,u8 cs);//ÏÔÊ¾Í¼Æ¬µ¥Ôª¡£
+							bmp_print_unit(176,(240-128)>>1,FatFile_AD,LCDC.LcdNumber[i]);//ÏÔÊ¾Í¼Æ¬µ¥Ôª¡£		
+							FatFile_AD.SW_state = SW_OFF; //¹Ø±ÕÊ±ÉêÇëÊ¹ÓÃ
+						}	
+					}
+					
 					sprintf((char*)LocalPoint, "%s:%d",device.Toolname,(LCDC.LcdNumber[i]));
 					tft_DisplayStr(320-16, 0, LocalPoint,BLACK, RED,LCDC.LcdNumber[i]);						
 				}
@@ -3870,6 +4236,17 @@ err_t LCD_task(void)
 						
 						sprintf((char*)LocalPoint, "KV:%d",(fkey.KeyValue));
 						tft_DisplayStr(320-16, 190, LocalPoint,BLACK, RED,(LCDC.LcdNumber[i]));
+						if(device.Version[0]==BL_FLAG)   //BLÄ£Ê½
+						{
+							sprintf((char*)LocalPoint, "Version:%s",device.Version);							
+							tft_DisplayStr(320-18*2, 120-(strlen((char*)LocalPoint)*4), LocalPoint,BLACK, WHITE,3);						
+							sprintf((char*)LocalPoint, "BIN=%d;PRO=%d",software.SourceBinState,software.ProStart);
+							tft_DisplayStr(320-18*3, 120-(strlen((char*)LocalPoint)*4), LocalPoint,BLACK, WHITE,3);						
+							sprintf((char*)LocalPoint, "APP=%d",software.HaveApp);
+							tft_DisplayStr(320-18*4, 120-(strlen((char*)LocalPoint)*4), LocalPoint,BLACK, WHITE,3);						
+							sprintf((char*)LocalPoint, "KEEP=%d",software.KEEP_EN);
+							tft_DisplayStr(320-18*5, 120-(strlen((char*)LocalPoint)*4), LocalPoint,BLACK, WHITE,3);						
+						}						
 					}
 //				}
 			}
@@ -3880,7 +4257,9 @@ err_t LCD_task(void)
 }
 err_t charge_task(void)
 {
-//	unsigned  int i;
+	unsigned  int i;
+	unsigned  char u8i;
+	unsigned  char index;
 	
 	
 //	GPIO_EN_HV(EN_HV1_PORT, EN_HV1_PIN,ON);
@@ -3907,12 +4286,77 @@ err_t charge_task(void)
 		{
 			device.ChargeTimer += device.ChargeTimerSet;
 			Get_ADC_BaseLine();
+			for(i=0;i<DefPortNum;i++)  //ÊÕ¼¯µçÁ÷µçÑ¹Êý¾Ý
+			{
+				if(time_sys-device.SampleCurrentTimer[i]> device.SampleCurrentTimerSet && (LCDC.LcdNumber[i]>0))
+				{
+					device.SampleCurrentTimer[i] += device.SampleCurrentTimerSet;
+					device.PortCurrent[i][device.SampleCurrentNumber[i]] = 0;
+					u8i = i*3 +3;		
+					for(index=i*3;index<u8i;index++)
+					{
+						if(ADC_Base0[index]>device.PortCurrent[i][device.SampleCurrentNumber[i]])
+						{
+							device.PortCurrent[i][device.SampleCurrentNumber[i]] = ADC_Base0[index];
+						}
+					}
+					
+					device.PortVoltage[i][device.SampleCurrentNumber[i]] = 0;
+					u8i = i*3 +9;		
+					for(index=i*3+6;index<u8i;index++)
+					{
+						if(ADC_Base0[index]>device.PortVoltage[i][device.SampleCurrentNumber[i]])
+						{
+							device.PortVoltage[i][device.SampleCurrentNumber[i]] = ADC_Base0[index];
+						}
+					}
+					
+					if(device.PortPowerUseTime[i]>0 && device.SampleCurrentNumber[i]<(SampleCurrentNumberMAX-1)) 
+					{
+						device.SampleCurrentNumber[i]++;					
+					}
+				}
+			}
+			
+			for(i=0;i<ADC1_3_ENABLE_CHANNEL_NUM;i++)
+			{
+				ADC_Base1[i] = ADC_BUFFER[ADC_ANx_piont[i]];
+			}			
 			if(device.PortPowerUseTime[0]>0)
 			{
 				device.PortPowerUseTime[0]--;
-				GPIO_EN_TPS54336(EN_TPS54336_1_PORT, EN_TPS54336_1_PIN,ON);
-				GPIO_EN_TPS54336(EN_TPS54336_2_PORT, EN_TPS54336_2_PIN,ON);
-				GPIO_EN_TPS54336(EN_TPS54336_3_PORT, EN_TPS54336_3_PIN,ON);
+				device.UserPort[0] =0xff;					
+				for(i=0;i<3;i++)
+				{
+					if(ADC_Base1[i] >0x80)
+					{
+					 device.UserPort[0] =i;					
+					}
+				}
+				if(device.UserPort[0]==0xff)
+				{
+					GPIO_EN_TPS54336(EN_TPS54336_1_PORT, EN_TPS54336_1_PIN,ON);					
+					GPIO_EN_TPS54336(EN_TPS54336_2_PORT, EN_TPS54336_2_PIN,ON);					
+					GPIO_EN_TPS54336(EN_TPS54336_3_PORT, EN_TPS54336_3_PIN,ON);					
+				}
+				else if(device.UserPort[0]==0)
+				{
+//					GPIO_EN_TPS54336(EN_TPS54336_1_PORT, EN_TPS54336_1_PIN,OFF);
+					GPIO_EN_TPS54336(EN_TPS54336_2_PORT, EN_TPS54336_2_PIN,OFF);
+					GPIO_EN_TPS54336(EN_TPS54336_3_PORT, EN_TPS54336_3_PIN,OFF);
+				}
+				else if(device.UserPort[0]==1)
+				{
+					GPIO_EN_TPS54336(EN_TPS54336_1_PORT, EN_TPS54336_1_PIN,OFF);
+//					GPIO_EN_TPS54336(EN_TPS54336_2_PORT, EN_TPS54336_2_PIN,OFF);
+					GPIO_EN_TPS54336(EN_TPS54336_3_PORT, EN_TPS54336_3_PIN,OFF);
+				}
+				else if(device.UserPort[0]==2)
+				{
+					GPIO_EN_TPS54336(EN_TPS54336_1_PORT, EN_TPS54336_1_PIN,OFF);
+					GPIO_EN_TPS54336(EN_TPS54336_2_PORT, EN_TPS54336_2_PIN,OFF);
+//					GPIO_EN_TPS54336(EN_TPS54336_3_PORT, EN_TPS54336_3_PIN,OFF);
+				}
 			}	
 			else
 			{
@@ -3920,12 +4364,42 @@ err_t charge_task(void)
 				GPIO_EN_TPS54336(EN_TPS54336_2_PORT, EN_TPS54336_2_PIN,OFF);
 				GPIO_EN_TPS54336(EN_TPS54336_3_PORT, EN_TPS54336_3_PIN,OFF);
 			}
+			
 			if(device.PortPowerUseTime[1]>0)
 			{
 				device.PortPowerUseTime[1]--;
-				GPIO_EN_TPS54336(EN_TPS54336_4_PORT, EN_TPS54336_4_PIN,ON);
-				GPIO_EN_TPS54336(EN_TPS54336_5_PORT, EN_TPS54336_5_PIN,ON);
-				GPIO_EN_TPS54336(EN_TPS54336_6_PORT, EN_TPS54336_6_PIN,ON);		
+				device.UserPort[1] =0xff;					
+				for(i=3;i<6;i++)
+				{
+					if(ADC_Base1[i] >0x80)
+					{
+					 device.UserPort[1] =i;					
+					}
+				}
+				if(device.UserPort[1]==0xff)
+				{
+					GPIO_EN_TPS54336(EN_TPS54336_4_PORT, EN_TPS54336_4_PIN,ON);					
+					GPIO_EN_TPS54336(EN_TPS54336_5_PORT, EN_TPS54336_5_PIN,ON);					
+					GPIO_EN_TPS54336(EN_TPS54336_6_PORT, EN_TPS54336_6_PIN,ON);					
+				}
+				else if(device.UserPort[1]==3)
+				{
+//					GPIO_EN_TPS54336(EN_TPS54336_4_PORT, EN_TPS54336_4_PIN,OFF);
+					GPIO_EN_TPS54336(EN_TPS54336_5_PORT, EN_TPS54336_5_PIN,OFF);
+					GPIO_EN_TPS54336(EN_TPS54336_6_PORT, EN_TPS54336_6_PIN,OFF);
+				}
+				else if(device.UserPort[1]==4)
+				{
+					GPIO_EN_TPS54336(EN_TPS54336_4_PORT, EN_TPS54336_4_PIN,OFF);
+//					GPIO_EN_TPS54336(EN_TPS54336_5_PORT, EN_TPS54336_5_PIN,OFF);
+					GPIO_EN_TPS54336(EN_TPS54336_6_PORT, EN_TPS54336_6_PIN,OFF);
+				}
+				else if(device.UserPort[1]==5)
+				{
+					GPIO_EN_TPS54336(EN_TPS54336_4_PORT, EN_TPS54336_4_PIN,OFF);
+					GPIO_EN_TPS54336(EN_TPS54336_5_PORT, EN_TPS54336_5_PIN,OFF);
+//					GPIO_EN_TPS54336(EN_TPS54336_6_PORT, EN_TPS54336_6_PIN,OFF);
+				}
 			}	
 			else
 			{
@@ -3997,6 +4471,8 @@ err_t key_task(void)
 						{
 							device.PortPowerSetTime[i] = 60;
 							device.PortPowerUseTime[i] = device.PortPowerSetTime[i];
+							device.SampleCurrentNumber[i] = 0;
+							device.SampleCurrentTimer[i] = time_sys;
 						}
 					}
 					else if(fkey.KeyValue==3)	 //ÉÏ³¤µç
@@ -4005,6 +4481,8 @@ err_t key_task(void)
 						{
 							device.PortPowerSetTime[i] = 0xffff;
 							device.PortPowerUseTime[i] = device.PortPowerSetTime[i];
+							device.SampleCurrentNumber[i] = 0;
+							device.SampleCurrentTimer[i] = time_sys;
 						}
 					}
 					else if(fkey.KeyValue==4)    //ÏÔÊ¾SDÉè±¸ÐÅÏ¢1
@@ -4058,7 +4536,9 @@ err_t key_task(void)
 					else if(fkey.KeyValue==8)    //
 					{}
 					else if(fkey.KeyValue==9)    //²ÁAÀà
-					{}
+					{
+						software.EraseApp = 1;
+					}
 					else if(fkey.KeyValue>10&&fkey.KeyValue<20)    //·Ö±ðÉÏµç
 					{						
 						if((fkey.KeyValue-10<=DefPortNum)&&(time_sys-fkey.PutInTimer>fkey.RetTimerSet))
@@ -4114,7 +4594,6 @@ void LCD_TEST(u8 cs)
 	u16 temp;
 	u32 temp1,temp2;
 //	0x0036
-	LCDC.LCDError =0;	
 	if('0'<device.Version[2])
 	{
 			tft_cs_enable(cs);
@@ -4162,21 +4641,21 @@ void LCD_TEST(u8 cs)
 				LCDC.SPTime[1] = time_sys-LCDC.SPTimeSet;
 			}		
 	}
-	if(LCDC.SPID[0]==2)
-	{
-				LCDC.TestTimer[0] = time_sys;
-	}
-	else
-	{
-		if((time_sys - LCDC.TestTimer[0])>(LCDC.TestTimerSet))   //ÆÁ±£Ê±¼äµÄ3·ÖÖ®Ò»³õÊ¼Ò»´Î
-		{
+//	if(LCDC.SPID[0]==2)
+//	{
+//				LCDC.TestTimer[0] = time_sys;
+//	}
+//	else
+//	{
+//		if((time_sys - LCDC.TestTimer[0])>(LCDC.TestTimerSet))   //ÆÁ±£Ê±¼äµÄ3·ÖÖ®Ò»³õÊ¼Ò»´Î
+//		{
 //			LCD_InitAll();
 //			LCDC.TestTimer[0] = time_sys;
 //			LCDC.TestTimer[1] = time_sys;
 //			LCDC.SPTime[0] = time_sys-LCDC.SPTimeSet;
 //			LCDC.SPTime[1] = time_sys-LCDC.SPTimeSet;
-		}
-	}
+//		}
+//	}
 }
 //×´Ì¬ÐÅÏ¢Í¨ÖªÀ¸
 void State_Message(unsigned int x, unsigned int y, u16 UpColor, u16 DownColor,u16 ChargeColor)
@@ -4184,8 +4663,9 @@ void State_Message(unsigned int x, unsigned int y, u16 UpColor, u16 DownColor,u1
 	u8 j,i;
 	u8 StateASCII_size;
 		
-			tft_Clear(2,1,5,6,WHITE,3);
+			tft_Clear(2,1,5,7,WHITE,3);
 			tft_Clear(2,1,(LCDC.LCDError%5),1,RED,3);	
+			LCDC.LCDError =0;	
 		if((time_sys-time_uart1)>=30000)  //30ÃëÃ»ÊÕ´®¿Ú
 		{
 //			tft_Clear(6,2,((device.addr&0x0f)/5),1,LGRAY,3);
@@ -4223,14 +4703,16 @@ void State_Message(unsigned int x, unsigned int y, u16 UpColor, u16 DownColor,u1
 			tft_Clear(0,19,1,1,DownColor,3);		
 		}
 //³äµç	
-	 if(ADC_BUFFER[20]>(ADC_Base0[6]+ADC_LINE2))
+//	 if(ADC_BUFFER[20]>(ADC_Base0[6]+ADC_LINE2))
+//		ADC_BUFFER[ADC_ANx_piont[i]]
+		ChargeColor = LGRAY;
+		for(i=0;i<3;i++)
 		{
-			ChargeColor = GREEN;
+			if(ADC_BUFFER[ADC_ANx_piont[i]]>(ADC_LINE2))
+			{
+				ChargeColor = GREEN;
+			}
 		}
-		else
-		{
-			ChargeColor = LGRAY;
-		}			
 		tft_Clear(0,26,1,1,ChargeColor,1);
 		tft_Clear(1,26,1,2,ChargeColor,1);
 		tft_Clear(2,26,1,3,ChargeColor,1);
@@ -4240,13 +4722,14 @@ void State_Message(unsigned int x, unsigned int y, u16 UpColor, u16 DownColor,u1
 		tft_Clear(6,25,1,2,ChargeColor,1);
 		tft_Clear(7,26,1,1,ChargeColor,1);	
 		
-	 if(ADC_BUFFER[23]>(ADC_Base0[7]+ADC_LINE2))
+//	 if(ADC_BUFFER[23]>(ADC_Base0[7]+ADC_LINE2))
+		ChargeColor = LGRAY;
+		for(i=3;i<6;i++)
 		{
-			ChargeColor = GREEN;
-		}
-		else
-		{
-			ChargeColor = LGRAY;
+			if(ADC_BUFFER[ADC_ANx_piont[i]]>(ADC_LINE2))
+			{
+				ChargeColor = GREEN;
+			}
 		}
 		tft_Clear(0,26,1,1,ChargeColor,2);
 		tft_Clear(1,26,1,2,ChargeColor,2);

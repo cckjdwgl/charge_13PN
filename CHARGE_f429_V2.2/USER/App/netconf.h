@@ -52,7 +52,8 @@
 #define TFT_DEBUG 
 	 
 #define DefineHeartTime    (5000)
-#define DefineHeartTry     (12)
+#define DefineHeartTry     (60)
+#define DefineHTTPTry      (12)
 #define DefineUDPTry     	 (4)
 #define DefineURLTry     	 (4)
 

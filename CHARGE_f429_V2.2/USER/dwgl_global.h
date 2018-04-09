@@ -82,7 +82,10 @@
 #define frame_headerC				0x67
 #define frame_headerD				0x68
 #define frame_last					0x99
-#define Version_FLAG1				('B')  //版本标志1
+#define BL_FLAG				     ('B')  //版本标志1
+#define APP_FLAG				   ('A')  //版本标志1
+//#define SoftWareType			 ('B')  //引导程序
+#define SoftWareType				('A')  //
 //#define port_num					0x02
 #define cmd_set_addr				0xe2  //设充电控制板地址命令
 
@@ -144,14 +147,29 @@ struct  Addr_info2STR {
 	u8 item32_data[16];
 };	
 
+#define SampleCurrentNumberMAX				(60)
+#define TASK_MAX				              (8)
+typedef err_t (*task_fn)(unsigned  char *buffer,unsigned  char *status);
+struct  TASK_STATUS {
+	unsigned char Port;  		 //端口
+	unsigned char Flag;  		 //任务完成情况
+	unsigned short Hook;  	//保存的是消息流水号
+};	 
+#define TASK_NULL				              (0)
+#define USE_NEW_CODE				          (16)
+
 struct  device_table {
 	u8 head;
 	u8 SW_state;  		//状态开关
 	u8 SD_state;  		//SD状态
 	unsigned  int ChargeTimer;  		//
 	unsigned  int ChargeTimerSet;  	//最后一RX的时间
+	unsigned  char SampleCurrentNumber[DefPortNum];  		//已采样的点数
+	unsigned  int SampleCurrentTimer[DefPortNum];  		//采样定时器
+	unsigned  int SampleCurrentTimerSet;  	//采样间隔
 	u8 Toolname[16];
-	u8 Version[16];
+	u8 Version[16];						//电路板自己的版本号
+	u8 SoftwareVersion[32];   //后台命令的版本号
 	u8 PortNum; 
 	u8 PortId[DefPortNum];					//只用了前面两个保存端口号
 	u8 PortState[DefPortNum];				//端口二维码是否下载完成
@@ -161,10 +179,13 @@ struct  device_table {
 	u16 PortPowerSetTime[DefPortNum];		//
 	u16 PortPowerUseTime[DefPortNum];		//
 	u16 PortPowerShowTime[DefPortNum];	//
-	u16 PortCurrent[DefPortNum][60];		//  mA
-	u8 use;						//使用情况 bit0=1连接断； bit1=1地址与二维码充突； bit2=1，0号无二维码 ； bit3=1，1号无二维码 ；bit4=1，二维码有更新
-	u8 TASK_state;		//任务情况对程序可以进行工作模式，调试模式
-	u8 province;      //省份
+	u16 PortCurrent[DefPortNum][SampleCurrentNumberMAX];		//  mA
+	u16 PortVoltage[DefPortNum][SampleCurrentNumberMAX];		//  mV
+	u8 UserPort[DefPortNum];		//  用户端口正在充电的端口
+	u8 use;						        //使用情况 bit0=1连接断； bit1=1地址与二维码充突； bit2=1，0号无二维码 ； bit3=1，1号无二维码 ；bit4=1，二维码有更新
+	task_fn task[TASK_MAX];		//任务情况对程序调用
+	struct TASK_STATUS TaskStatus[TASK_MAX];
+	u8 province;              //省份
 };	  
 
 
@@ -297,6 +318,7 @@ extern u8 SPI_BUFFER[128];
 extern u16 ADC_BUFFER[ADC_BUFFER_SIZE];
 extern u8 AINx_ADCch[18];
 extern u16 ADC_Base0[18];			//ADC静态值
+extern u16 ADC_Base1[18];			//ADC静态值
 extern u8 device_num[20];
 #ifndef BOOTLOADER_SOURCECODE//ZHZQ_CHANGE
 extern 	u8 charge_speed[2];   //充电速度

@@ -87,3 +87,5 @@
 .\output\dwgl_tim.o: ..\..\USER\FATFS\ff.h
 .\output\dwgl_tim.o: ..\..\USER\FATFS\ffconf.h
 .\output\dwgl_tim.o: ..\..\USER\sdio/bsp_sdio_sd.h
+.\output\dwgl_tim.o: ..\..\USER\./iwdg/bsp_iwdg.h
+.\output\dwgl_tim.o: ..\..\USER\dwgl_chipflash.h

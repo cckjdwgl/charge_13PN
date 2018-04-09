@@ -88,3 +88,5 @@
 .\output\stm32f4xx_rtc.o: ..\..\USER\FATFS\ff.h
 .\output\stm32f4xx_rtc.o: ..\..\USER\FATFS\ffconf.h
 .\output\stm32f4xx_rtc.o: ..\..\USER\sdio/bsp_sdio_sd.h
+.\output\stm32f4xx_rtc.o: ..\..\USER\./iwdg/bsp_iwdg.h
+.\output\stm32f4xx_rtc.o: ..\..\USER\dwgl_chipflash.h

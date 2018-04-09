@@ -89,3 +89,5 @@
 .\output\dwgl_memp.o: ..\..\USER\FATFS\ff.h
 .\output\dwgl_memp.o: ..\..\USER\FATFS\ffconf.h
 .\output\dwgl_memp.o: ..\..\USER\sdio/bsp_sdio_sd.h
+.\output\dwgl_memp.o: ..\..\USER\./iwdg/bsp_iwdg.h
+.\output\dwgl_memp.o: ..\..\USER\dwgl_chipflash.h

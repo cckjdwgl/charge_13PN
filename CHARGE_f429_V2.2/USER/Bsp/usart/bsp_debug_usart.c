@@ -26,7 +26,8 @@ void Debug_USART_Config(void)
 {
   GPIO_InitTypeDef GPIO_InitStructure;
   USART_InitTypeDef USART_InitStructure;
-		
+
+	USART_DeInit(DEBUG_USART);	
   RCC_AHB1PeriphClockCmd( DEBUG_USART_RX_GPIO_CLK|DEBUG_USART_TX_GPIO_CLK, ENABLE);
 
   /* Enable UART clock */
